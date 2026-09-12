@@ -2,7 +2,7 @@
 """初始化 user-data/，从 assets/starter-profile/ 复制模板。
 
 用法：
-    python scripts/init_profile.py --name 小龙 --theme 武侠
+    python scripts/init_profile.py --name 小龙
     python scripts/init_profile.py
 """
 import argparse
@@ -21,8 +21,11 @@ USER_DATA = resolve_user_data(ROOT)
 def main():
     parser = argparse.ArgumentParser(description="初始化训练档案")
     parser.add_argument("--name", help="你的名字")
-    parser.add_argument("--theme", help="RPG 主题")
-    parser.add_argument("--force", action="store_true", help="覆盖已有 user-data")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="删除并重建已有训练档案；会永久删除现有记录",
+    )
     args = parser.parse_args()
 
     if USER_DATA.exists() and not args.force:
@@ -38,8 +41,6 @@ def main():
     state = load_json(state_file)
     if args.name:
         state["profile"]["name"] = args.name
-    if args.theme:
-        state["profile"]["theme"] = args.theme
     atomic_write(state_file, state)
 
     # 同步 PROFILE.md 占位符
@@ -47,8 +48,6 @@ def main():
     text = profile_file.read_text(encoding="utf-8")
     if args.name:
         text = text.replace("<你的名字>", args.name)
-    if args.theme:
-        text = text.replace("<经典模式 / 武侠 / 剑与魔法 / 战士 / 自定义>", args.theme)
     profile_file.write_text(text, encoding="utf-8")
 
     print(f"[OK] 已初始化 {USER_DATA}")
