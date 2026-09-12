@@ -8,10 +8,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import load_json
+from _common import load_json, resolve_user_data
 
 ROOT = Path(__file__).resolve().parent.parent
-USER_DATA = ROOT / "user-data"
+USER_DATA = resolve_user_data(ROOT)
 
 
 def main():
@@ -19,12 +19,12 @@ def main():
 
     state_file = USER_DATA / "CURRENT-STATE.json"
     if not state_file.exists():
-        print("❌ CURRENT-STATE.json 不存在。先运行 init_profile.py。")
+        print("[ERROR] CURRENT-STATE.json 不存在。先运行 init_profile.py。")
         return 1
     try:
         state = load_json(state_file)
     except Exception as e:
-        print(f"❌ CURRENT-STATE.json 格式错误: {e}")
+        print(f"[ERROR] CURRENT-STATE.json 格式错误: {e}")
         return 1
 
     sessions_dir = USER_DATA / "sessions"
@@ -59,12 +59,12 @@ def main():
             errors.append(f"story/STATE.json 格式错误: {e}")
 
     if not errors and not warnings:
-        print("✅ 一切正常，无错误无警告。")
+        print("[OK] 一切正常，无错误无警告。")
         return 0
     for e in errors:
-        print(f"❌ {e}")
+        print(f"[ERROR] {e}")
     for w in warnings:
-        print(f"⚠️ {w}")
+        print(f"[WARN] {w}")
     return 1 if errors else 0
 
 

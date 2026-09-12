@@ -12,10 +12,10 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import load_json, atomic_write
+from _common import load_json, atomic_write, resolve_user_data
 
 ROOT = Path(__file__).resolve().parent.parent
-USER_DATA = ROOT / "user-data"
+USER_DATA = resolve_user_data(ROOT)
 CN_TZ = timezone(timedelta(hours=8))
 
 
@@ -55,7 +55,7 @@ def main():
     else:
         raw = sys.stdin.read()
         if not raw.strip():
-            print("❌ 未提供训练数据。用 --file 或管道传入 JSON。")
+            print("[ERROR] 未提供训练数据。用 --file 或管道传入 JSON。")
             return 1
         data = json.loads(raw)
 
@@ -92,7 +92,7 @@ def main():
         session = data
 
     atomic_write(session_file, session)
-    print(f"✅ 已追加 {len(exercises)} 个动作到 {session_file.name}")
+    print(f"[OK] 已追加 {len(exercises)} 个动作到 {session_file.name}")
     print("   下一步：运行 update_summary.py 更新状态。")
     return 0
 

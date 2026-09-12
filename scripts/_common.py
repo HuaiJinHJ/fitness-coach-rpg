@@ -5,6 +5,14 @@ import tempfile
 from pathlib import Path
 
 
+def resolve_user_data(root):
+    """Return the live data directory, or an explicit isolated override."""
+    override = os.environ.get("FITNESS_COACH_DATA_DIR")
+    if override:
+        return Path(override).resolve()
+    return Path(root) / "user-data"
+
+
 def load_json(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
 

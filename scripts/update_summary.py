@@ -11,10 +11,10 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import load_json, atomic_write
+from _common import load_json, atomic_write, resolve_user_data
 
 ROOT = Path(__file__).resolve().parent.parent
-USER_DATA = ROOT / "user-data"
+USER_DATA = resolve_user_data(ROOT)
 CN_TZ = timezone(timedelta(hours=8))
 
 # EXP 规则（references/rpg-rules.md v2：奖励健康行为，不奖励硬撑）
@@ -39,7 +39,7 @@ def load_all_sessions():
         try:
             out.append(load_json(f))
         except Exception as e:
-            print(f"⚠️ 跳过 {f.name}: {e}")
+            print(f"[WARN] 跳过 {f.name}: {e}")
     return out
 
 
@@ -185,7 +185,7 @@ def compute_attributes(sessions):
 def main():
     state_file = USER_DATA / "CURRENT-STATE.json"
     if not state_file.exists():
-        print(f"❌ {state_file} 不存在。先运行 init_profile.py。")
+        print(f"[ERROR] {state_file} 不存在。先运行 init_profile.py。")
         return 1
     sessions = load_all_sessions()
     state = load_json(state_file)
@@ -202,7 +202,7 @@ def main():
             break
     old_level = state["profile"].get("level", 1)
     if new_level != old_level:
-        print(f"🎉 升级！Lv.{old_level} → Lv.{new_level}")
+        print(f"[OK] 升级：Lv.{old_level} -> Lv.{new_level}")
     state["profile"]["level"] = new_level
     state["profile"]["exp_to_next"] = LEVEL_THRESHOLDS.get(new_level + 1, 15000)
 
@@ -214,7 +214,7 @@ def main():
 
     state["updated_at"] = datetime.now(CN_TZ).strftime("%Y-%m-%dT%H:%M:%S+08:00")
     atomic_write(state_file, state)
-    print(f"✅ 已更新 {state_file.name}")
+    print(f"[OK] 已更新 {state_file.name}")
     print(f"   Lv.{new_level} | EXP {exp}/{state['profile']['exp_to_next']} | "
           f"STR {old_attr['STR']} CON {old_attr['CON']}")
     print("   END/AGI/INT 留空，由 AI 训练后评估填入。")

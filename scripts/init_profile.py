@@ -11,11 +11,11 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import load_json, atomic_write
+from _common import load_json, atomic_write, resolve_user_data
 
 ROOT = Path(__file__).resolve().parent.parent
 STARTER = ROOT / "assets" / "starter-profile"
-USER_DATA = ROOT / "user-data"
+USER_DATA = resolve_user_data(ROOT)
 
 
 def main():
@@ -26,7 +26,7 @@ def main():
     args = parser.parse_args()
 
     if USER_DATA.exists() and not args.force:
-        print(f"❌ {USER_DATA} 已存在。用 --force 覆盖（会删除现有数据）。")
+        print(f"[ERROR] {USER_DATA} 已存在。用 --force 覆盖（会删除现有数据）。")
         return 1
 
     if USER_DATA.exists():
@@ -51,7 +51,7 @@ def main():
         text = text.replace("<经典模式 / 武侠 / 剑与魔法 / 战士 / 自定义>", args.theme)
     profile_file.write_text(text, encoding="utf-8")
 
-    print(f"✅ 已初始化 {USER_DATA}")
+    print(f"[OK] 已初始化 {USER_DATA}")
     print("   编辑 PROFILE.md 和 CURRENT-STATE.json 完善档案，或直接开始训练。")
     return 0
 
