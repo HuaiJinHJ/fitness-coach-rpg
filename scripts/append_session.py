@@ -19,20 +19,35 @@ USER_DATA = resolve_user_data(ROOT)
 CN_TZ = timezone(timedelta(hours=8))
 
 
+def validate_date(value):
+    datetime.strptime(value, "%Y-%m-%d")
+
+
 def validate_exercise(ex):
+    status = ex.get("status", "completed")
     sets = ex.get("sets", [])
-    if not sets:
-        raise ValueError(f"动作 {ex.get('exercise', '?')} 没有 sets")
-    for i, s in enumerate(sets):
+    if status == "skipped":
+        if not ex.get("skip_reason"):
+            raise ValueError(f"动作 {ex.get('exercise', '?')} 缺少 skip_reason")
+        return
+
+    working = [s for s in sets if s.get("set_type", "working") == "working"]
+    if not working:
+        raise ValueError(f"动作 {ex.get('exercise', '?')} 没有正式组")
+
+    for i, s in enumerate(sets, start=1):
         w = s.get("weight_kg")
         r = s.get("reps")
         rpe = s.get("rpe")
-        if w is not None and w <= 0:
-            raise ValueError(f"动作 {ex['exercise']} 第{i+1}组 weight_kg 必须 > 0")
+        rir = s.get("rir")
+        if w is not None and w < 0:
+            raise ValueError(f"动作 {ex.get('exercise', '?')} 第{i}组 weight_kg 不能小于 0")
         if r is not None and r <= 0:
-            raise ValueError(f"动作 {ex['exercise']} 第{i+1}组 reps 必须 > 0")
-        if rpe is not None and not (1 <= rpe <= 10):
-            raise ValueError(f"动作 {ex['exercise']} 第{i+1}组 rpe 必须 1-10")
+            raise ValueError(f"动作 {ex.get('exercise', '?')} 第{i}组 reps 必须大于 0")
+        if rpe is not None and not 1 <= rpe <= 10:
+            raise ValueError(f"动作 {ex.get('exercise', '?')} 第{i}组 rpe 必须为 1-10")
+        if rir is not None and not 0 <= rir <= 10:
+            raise ValueError(f"动作 {ex.get('exercise', '?')} 第{i}组 rir 必须为 0-10")
 
 
 def normalize_exercise(ex):
@@ -66,6 +81,7 @@ def main():
         date = data["date"]
     else:
         date = datetime.now(CN_TZ).strftime("%Y-%m-%d")
+    validate_date(date)
 
     # 校验 + 标准化
     exercises = data.get("exercises", [])
@@ -74,7 +90,7 @@ def main():
         validate_exercise(ex)
 
     data["date"] = date
-    data["schema_version"] = data.get("schema_version", "1.0")
+    data["schema_version"] = data.get("schema_version", "2.0")
 
     # 追加到 sessions 文件
     session_file = USER_DATA / "sessions" / f"{date}.json"
@@ -83,11 +99,9 @@ def main():
     if session_file.exists():
         session = load_json(session_file)
         session.setdefault("exercises", []).extend(exercises)
-        if "duration_minutes" in data:
-            session["duration_minutes"] = max(
-                session.get("duration_minutes", 0), data["duration_minutes"])
-        if "overall_rpe" in data:
-            session["overall_rpe"] = data["overall_rpe"]
+        for key in ("duration_minutes", "overall_rpe", "readiness", "notes"):
+            if key in data:
+                session[key] = data[key]
     else:
         session = data
 

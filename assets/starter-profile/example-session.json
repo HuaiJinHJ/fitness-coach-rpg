@@ -1,28 +1,35 @@
 {
-  "schema_version": "1.0",
-  "date": "2026-05-01",
-  "session_type": "push",
-  "duration_minutes": 60,
-  "overall_rpe": 8,
+  "schema_version": "2.0",
+  "date": "2026-09-12",
+  "session_type": "full_body_a",
+  "duration_minutes": 45,
+  "readiness": {
+    "sleep": "normal",
+    "energy": 7,
+    "pain": []
+  },
+  "overall_rpe": 7,
+  "notes": "整体状态正常",
   "exercises": [
     {
-      "exercise": "barbell_bench_press",
+      "exercise": "seated_chest_press",
+      "equipment": "machine",
+      "settings": {"seat": 4},
+      "status": "completed",
       "sets": [
-        {"weight_kg": 45, "reps": 8, "rpe": 8},
-        {"weight_kg": 45, "reps": 8, "rpe": 8},
-        {"weight_kg": 45, "reps": 8, "rpe": 8}
+        {"set_type": "warmup", "weight_kg": 10, "reps": 12},
+        {"set_type": "working", "weight_kg": 20, "reps": 12, "rpe": 7},
+        {"set_type": "working", "weight_kg": 20, "reps": 11, "rir": 3}
       ],
       "pain": {"location": null, "severity": 0},
-      "notes": "动作稳定，胸肌发力感明显"
+      "notes": "胸部发力清楚"
     },
     {
-      "exercise": "incline_dumbbell_press",
-      "sets": [
-        {"weight_kg": 14, "reps": 12, "rpe": 8}
-      ],
-      "pain": {"location": null, "severity": 0},
-      "notes": "4组12次"
+      "exercise": "box_squat",
+      "status": "skipped",
+      "sets": [],
+      "skip_reason": "器械区域拥挤",
+      "pain": {"location": null, "severity": 0}
     }
-  ],
-  "story_advance": "推日突破叙事一段"
+  ]
 }
