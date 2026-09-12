@@ -1,185 +1,127 @@
 #!/usr/bin/env python3
-"""训练后更新 CURRENT-STATE.json（重算 bests/exp/recovery/STR/CON）。
-
-用法：
-    python scripts/update_summary.py
-
-END/AGI/INT 不由脚本计算（输入数据缺失），留空由 AI 评估填入。
-"""
+"""Rebuild CURRENT-STATE.json from append-only workout sessions."""
+import json
 import sys
-from datetime import datetime, timezone, timedelta
+from collections import defaultdict
+from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _common import load_json, atomic_write, resolve_user_data
+from _common import atomic_write, load_json, resolve_user_data
+from coach_rules import recommend_exercise
 
 ROOT = Path(__file__).resolve().parent.parent
 USER_DATA = resolve_user_data(ROOT)
 CN_TZ = timezone(timedelta(hours=8))
 
-# EXP 规则（references/rpg-rules.md v2：奖励健康行为，不奖励硬撑）
-EXP_PER_SET = 5
-EXP_PER_PR = 10  # PR 只是里程碑，不鼓励为大重量硬撑
-EXP_PER_CARDIO = 15
-EXP_PER_HONEST_PAIN = 5  # 诚实记录疼痛
-EXP_PER_REASONABLE_DELOAD = 5  # 合理降重
-EXP_LONG_TERM_CONSISTENCY = 20  # 近30天≥8次
-STREAK_BONUS = {2: 1.2, 3: 1.5, 5: 2.0}
-
-# 等级阈值（rpg-rules.md）
-LEVEL_THRESHOLDS = {1: 0, 2: 200, 3: 600, 4: 1500, 5: 3500, 6: 7000, 7: 15000}
-
 
 def load_all_sessions():
-    d = USER_DATA / "sessions"
-    if not d.exists():
+    directory = USER_DATA / "sessions"
+    if not directory.exists():
         return []
-    out = []
-    for f in sorted(d.glob("*.json")):
+    sessions = []
+    for path in sorted(directory.glob("*.json")):
         try:
-            out.append(load_json(f))
-        except Exception as e:
-            print(f"[WARN] 跳过 {f.name}: {e}")
-    return out
+            sessions.append(load_json(path))
+        except Exception as error:
+            print(f"[WARN] 跳过 {path.name}: {error}")
+    return sorted(sessions, key=lambda item: item.get("date", ""))
 
 
-def compute_bests(sessions):
-    bests = {}
-    for s in sessions:
-        date = s.get("date", "")
-        for ex in s.get("exercises", []):
-            name = ex.get("exercise", "")
-            for st in ex.get("sets", []):
-                w = st.get("weight_kg", 0) or 0
-                r = st.get("reps", 0) or 0
-                if name not in bests or w > bests[name]["weight_kg"]:
-                    bests[name] = {"weight_kg": w, "reps": r, "date": date}
-    return bests
+def days_since(date_text):
+    today = datetime.now(CN_TZ).date()
+    date = datetime.strptime(date_text, "%Y-%m-%d").date()
+    return (today - date).days
 
 
-def compute_streak(sessions):
-    dates = sorted({s.get("date") for s in sessions if s.get("date")})
-    if not dates:
-        return 0
-    last = datetime.strptime(dates[-1], "%Y-%m-%d").date()
-    streak = 1
-    for i in range(len(dates) - 2, -1, -1):
-        prev = datetime.strptime(dates[i], "%Y-%m-%d").date()
-        if (last - prev).days == 1:
-            streak += 1
-            last = prev
-        else:
-            break
-    return streak
+def comparison_key(exercise):
+    equipment = exercise.get("equipment")
+    settings = exercise.get("settings", {})
+    return equipment, json.dumps(settings, ensure_ascii=False, sort_keys=True)
 
 
-def compute_exp(sessions):
-    """按时间顺序算累计 EXP。奖励健康行为（诚实记录/合理降重/规律/一致），PR 只是里程碑。"""
-    from datetime import datetime, timedelta
-    sorted_s = sorted(sessions, key=lambda s: s.get("date", ""))
-    running = {}  # 动作 → 历史最大重量
-    total = 0
-    last_session_exp = 0
-    for s in sorted_s:
-        se = 0
-        session_max = {}
-        has_honest_pain = False
-        for ex in s.get("exercises", []):
-            name = ex.get("exercise", "")
-            # 诚实记录疼痛
-            p = ex.get("pain", {})
-            if p.get("severity", 0) > 0:
-                has_honest_pain = True
-            for st in ex.get("sets", []):
-                se += EXP_PER_SET
-                w = st.get("weight_kg", 0) or 0
-                if name not in session_max or w > session_max[name]:
-                    session_max[name] = w
-        # PR（里程碑，非主要来源）
-        for name, w in session_max.items():
-            if name in running and w > running[name]:
-                se += EXP_PER_PR
-        # 合理降重：本次 < 上次且 RPE 合理
-        overall_rpe = s.get("overall_rpe")
-        rpe_ok = overall_rpe is not None and overall_rpe <= 8
-        for name, w in session_max.items():
-            if name in running and w < running[name] and rpe_ok:
-                se += EXP_PER_REASONABLE_DELOAD
-        # 诚实记录疼痛
-        if has_honest_pain:
-            se += EXP_PER_HONEST_PAIN
-        # 更新历史最佳
-        for name, w in session_max.items():
-            if name not in running or w > running[name]:
-                running[name] = w
-        if s.get("session_type", "").lower() in ("cardio", "有氧", "aerobic"):
-            se += EXP_PER_CARDIO
-        total += se
-        last_session_exp = se
-    # 长期一致性：近 30 天 ≥ 8 次
-    if sessions:
-        dates = sorted({s.get("date") for s in sessions if s.get("date")})
-        if dates:
-            latest = datetime.strptime(dates[-1], "%Y-%m-%d").date()
-            cutoff = latest - timedelta(days=30)
-            recent_count = sum(1 for d in dates
-                               if datetime.strptime(d, "%Y-%m-%d").date() >= cutoff)
-            if recent_count >= 8:
-                total += EXP_LONG_TERM_CONSISTENCY
-    # 连击加成（仅最近一次）
-    streak = compute_streak(sessions)
-    bonus = 1.0
-    if streak >= 5:
-        bonus = STREAK_BONUS[5]
-    elif streak >= 3:
-        bonus = STREAK_BONUS[3]
-    elif streak >= 2:
-        bonus = STREAK_BONUS[2]
-    total = total - last_session_exp + int(last_session_exp * bonus)
-    return total
+def collect_occurrences(sessions):
+    grouped = defaultdict(list)
+    for session in sessions:
+        date = session.get("date")
+        for exercise in session.get("exercises", []):
+            name = exercise.get("exercise")
+            if not name:
+                continue
+            item = deepcopy(exercise)
+            item["date"] = date
+            grouped[name].append(item)
+    return grouped
 
 
-def compute_recovery(sessions):
+def comparable_completed_history(occurrences):
+    completed = [
+        item for item in occurrences
+        if item.get("status", "completed") == "completed"
+    ]
+    if not completed:
+        return []
+    latest_key = comparison_key(completed[-1])
+    comparable = [item for item in completed if comparison_key(item) == latest_key]
+    return comparable[-3:]
+
+
+def compute_recovery(sessions, occurrences):
     if not sessions:
-        return {"last_session_date": None, "days_since_last": None,
-                "streak_days": 0, "recent_rpe_trend": [], "active_pain": []}
-    dates = sorted({s.get("date") for s in sessions if s.get("date")})
-    last_date = dates[-1]
-    today = datetime.now(CN_TZ).strftime("%Y-%m-%d")
-    days = (datetime.strptime(today, "%Y-%m-%d").date() -
-            datetime.strptime(last_date, "%Y-%m-%d").date()).days
-    recent = sorted(sessions, key=lambda s: s.get("date", ""))[-5:]
-    rpe_trend = [s.get("overall_rpe") for s in recent
-                 if s.get("overall_rpe") is not None]
-    pain = []
-    for s in sorted(sessions, key=lambda s: s.get("date", ""))[-10:]:
-        for ex in s.get("exercises", []):
-            p = ex.get("pain", {})
-            if p.get("severity", 0) > 0:
-                pain.append({"location": p.get("location"),
-                             "severity": p["severity"], "date": s.get("date")})
-    return {"last_session_date": last_date, "days_since_last": days,
-            "streak_days": compute_streak(sessions),
-            "recent_rpe_trend": rpe_trend, "active_pain": pain}
+        return {
+            "last_session_date": None,
+            "days_since_last": None,
+            "recent_rpe_trend": [],
+            "active_pain": [],
+        }
+    last_date = sessions[-1].get("date")
+    recent_rpe = [
+        item["overall_rpe"]
+        for item in sessions[-5:]
+        if item.get("overall_rpe") is not None
+    ]
+    active_pain = []
+    for name, items in sorted(occurrences.items()):
+        latest = items[-1]
+        pain = latest.get("pain", {})
+        severity = pain.get("severity", 0) or 0
+        if severity > 0:
+            active_pain.append({
+                "exercise": name,
+                "location": pain.get("location"),
+                "severity": severity,
+                "date": latest.get("date"),
+            })
+    return {
+        "last_session_date": last_date,
+        "days_since_last": days_since(last_date),
+        "recent_rpe_trend": recent_rpe,
+        "active_pain": active_pain,
+    }
 
 
-def compute_attributes(sessions):
-    """STR/CON 脚本算，END/AGI/INT 留空给 AI。"""
-    max_w = 0
-    total_reps = 0
-    total_vol = 0
-    for s in sessions:
-        for ex in s.get("exercises", []):
-            for st in ex.get("sets", []):
-                w = st.get("weight_kg", 0) or 0
-                r = st.get("reps", 0) or 0
-                if w > max_w:
-                    max_w = w
-                total_reps += r
-                total_vol += w * r
-    return {"STR": round(max_w / 2 + total_reps / 20, 1),
-            "END": None, "CON": round(total_vol / 1000, 1),
-            "AGI": None, "INT": None}
+def build_state(old_state, sessions):
+    occurrences = collect_occurrences(sessions)
+    history = {}
+    recommendations = {}
+    for name, items in sorted(occurrences.items()):
+        comparable = comparable_completed_history(items)
+        if not comparable:
+            continue
+        history[name] = comparable
+        exercise_gap = days_since(comparable[-1]["date"])
+        recommendations[name] = recommend_exercise(comparable, exercise_gap)
+
+    name = old_state.get("profile", {}).get("name", "<你的名字>")
+    return {
+        "schema_version": "2.0",
+        "updated_at": datetime.now(CN_TZ).strftime("%Y-%m-%dT%H:%M:%S+08:00"),
+        "profile": {"name": name, "mode": "pure_coach"},
+        "recovery": compute_recovery(sessions, occurrences),
+        "exercise_history": history,
+        "next_recommendations": recommendations,
+    }
 
 
 def main():
@@ -187,37 +129,11 @@ def main():
     if not state_file.exists():
         print(f"[ERROR] {state_file} 不存在。先运行 init_profile.py。")
         return 1
-    sessions = load_all_sessions()
-    state = load_json(state_file)
-
-    state["recent_bests"] = compute_bests(sessions)
-    state["recovery"] = compute_recovery(sessions)
-
-    exp = compute_exp(sessions)
-    state["profile"]["exp"] = exp
-    new_level = 1
-    for lv in sorted(LEVEL_THRESHOLDS, reverse=True):
-        if exp >= LEVEL_THRESHOLDS[lv]:
-            new_level = lv
-            break
-    old_level = state["profile"].get("level", 1)
-    if new_level != old_level:
-        print(f"[OK] 升级：Lv.{old_level} -> Lv.{new_level}")
-    state["profile"]["level"] = new_level
-    state["profile"]["exp_to_next"] = LEVEL_THRESHOLDS.get(new_level + 1, 15000)
-
-    new_attr = compute_attributes(sessions)
-    old_attr = state.get("attributes", {})
-    old_attr["STR"] = new_attr["STR"]
-    old_attr["CON"] = new_attr["CON"]
-    state["attributes"] = old_attr
-
-    state["updated_at"] = datetime.now(CN_TZ).strftime("%Y-%m-%dT%H:%M:%S+08:00")
+    old_state = load_json(state_file)
+    state = build_state(old_state, load_all_sessions())
     atomic_write(state_file, state)
     print(f"[OK] 已更新 {state_file.name}")
-    print(f"   Lv.{new_level} | EXP {exp}/{state['profile']['exp_to_next']} | "
-          f"STR {old_attr['STR']} CON {old_attr['CON']}")
-    print("   END/AGI/INT 留空，由 AI 训练后评估填入。")
+    print(f"   已汇总 {len(state['exercise_history'])} 个可比较动作。")
     return 0
 
 
