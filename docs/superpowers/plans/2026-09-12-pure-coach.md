@@ -28,6 +28,7 @@
 - Modify `assets/starter-profile/CURRENT-STATE.json`: use the pure-coach derived-state schema.
 - Modify `assets/starter-profile/example-session.json`: demonstrate working sets, RPE/RIR, equipment, skipped status, pain, and notes.
 - Modify `SKILL.md`: make pure coaching the only active behavior in this save.
+- Create `AGENTS.md`: make future Codex tasks in this repository load the pure-coach rules and local training state.
 - Modify `README.md`: explain the simplified local workflow and remove claims that scripts do not implement.
 - Modify `examples/MINIMAL-RUN.md`: show plan-first, adjust-on-exception usage.
 - Modify `references/test-scenarios.md`: align manual scenarios with pure coaching.
@@ -474,6 +475,7 @@ git commit -m "feat: initialize pure coach profiles"
 ### Task 6: Make the AI behavior pure, concise, and traceable
 
 **Files:**
+- Create: `AGENTS.md`
 - Modify: `SKILL.md`
 - Modify: `README.md`
 - Modify: `examples/MINIMAL-RUN.md`
@@ -511,7 +513,17 @@ Keep these sections in order:
 
 The file must explicitly say that named coaches are not selected, RPG files are ignored, missing data is not inferred, and every changed recommendation cites its training-data reason.
 
-- [ ] **Step 3: Align user documentation**
+- [ ] **Step 3: Add the project entrypoint**
+
+Create `AGENTS.md` with these project-scoped rules:
+
+- use Simplified Chinese for coaching;
+- read `SKILL.md` before handling a fitness request;
+- read the profile, current state, current plan, and relevant recent sessions before recommending training;
+- keep RPG and named-coach behavior disabled;
+- never run tests against the live `user-data` directory.
+
+- [ ] **Step 4: Align user documentation**
 
 Update `README.md` and `examples/MINIMAL-RUN.md` to describe the repository as a local pure-coach save for this workflow. Show this example interaction:
 
@@ -524,20 +536,20 @@ Update `README.md` and `examples/MINIMAL-RUN.md` to describe the repository as a
 
 Remove unsupported claims that conversation alone becomes durable memory. Explain that durable continuity comes from the local session files and derived state.
 
-- [ ] **Step 4: Record the conversion**
+- [ ] **Step 5: Record the conversion**
 
 Add a dated changelog entry describing pure-coach mode, isolated tests, schema version 2.0, RPE/RIR logging, and recovery-aware recommendations.
 
-- [ ] **Step 5: Review behavior text**
+- [ ] **Step 6: Review behavior text**
 
 Run: `rg -n "剧情|经验值|EXP|等级|属性|周六野|凯圣王|帕梅拉" SKILL.md README.md examples/MINIMAL-RUN.md assets/starter-profile`
 
 Expected: matches appear only in explicit statements that RPG and named-coach selection are disabled; no active instruction asks the coach to use them.
 
-- [ ] **Step 6: Commit behavior and documentation**
+- [ ] **Step 7: Commit behavior and documentation**
 
 ```bash
-git add SKILL.md README.md examples/MINIMAL-RUN.md references/test-scenarios.md CHANGELOG.md
+git add AGENTS.md SKILL.md README.md examples/MINIMAL-RUN.md references/test-scenarios.md CHANGELOG.md docs/superpowers/plans/2026-09-12-pure-coach.md
 git commit -m "docs: make pure coaching the active workflow"
 ```
 

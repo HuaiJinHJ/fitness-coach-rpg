@@ -1,247 +1,112 @@
-# Fitness Coach RPG 🎮💪
+# Fitness Coach — 纯教练模式
 
-> 一个可开新档的 AI 健身教练框架：训练记录、RPG 属性成长、剧情推进三者联动
+这是一个本地文件驱动的长期健身教练工作区，基于开源项目 Fitness Coach RPG 简化而来。当前只保留训练计划、训练记录、恢复判断和动态调整，不启用 RPG 或具名教练模仿。
 
-![License](https://img.shields.io/github/license/chenklein26-maker/fitness-coach-rpg)
+它不是需要部署的应用，也不需要注册平台。训练事实保存在本地 JSON 和 Markdown 文件中，AI 负责读取这些事实、给出当天计划并解释调整依据。
 
-一个可开新档的 AI 健身教练框架：训练记录、RPG 属性成长、剧情推进三者联动，但世界观、角色和主线由使用者自己探索与定义。
+## 当前目标
 
-这不是某个固定角色的存档分享，而是一套可复用的玩法系统。你可以把它当作：
+- 帮助用户开始并长期坚持规律训练；
+- 每次去健身房前明确知道当天练什么；
+- 记录动作、重量、次数、组数、RPE 或 RIR、疼痛和主观感受；
+- 根据可比较的历史表现调整下一次训练；
+- 中断、疲劳、疼痛或停滞时主动降级，而不是机械执行。
 
-- 本地文件驱动的 AI 健身教练
-- 带长期成长感的训练记录系统
-- 可自定义世界观的训练叙事框架
+首个四周周期以出勤和流程稳定为主：每周完成一次即为成功，完成两次更理想。
 
-**English:** A reusable AI fitness coach framework powered by local Markdown logs, long-term progression, and optional story mode.
+## 日常使用
 
----
-
-## ✨ 核心特性
-
-- 📝 **智能训练记录**：自动追踪重量、次数、RPE、体感反馈
-- 📊 **渐进式成长**：等级、属性、经验值系统
-- 🎭 **剧情模式**：训练转化为叙事，打造专属冒险
-- 🔄 **恢复感知**：智能判断中断后的恢复强度
-- 🎨 **高度自定义**：教练风格、RPG主题、世界观自由设定
-- 📁 **本地持久化**：Markdown 文件存储，安全可控
-- 🤖 **持续学习**：越用越懂你的训练偏好
-
----
-
-## Quick Intro (EN)
-
-Fitness Coach RPG helps you build a long-running training system with:
-
-- workout logging (weight, reps, RPE, notes)
-- recovery-aware planning (including comeback after breaks)
-- optional RPG progression and story mode
-- local-file structure for long-term continuity and customization
-
-If you want to run your own "save file" instead of inheriting someone else's story world, this repo is built for that.
-
----
-
-## 适合谁
-
-- 想把训练记录做得更长期、更有反馈感的人
-- 喜欢 RPG 成长、称号、属性、剧情推进的人
-- 希望 AI 不只是记录训练，还能长期陪练的人
-
----
-
-## 越用越智能
-
-这个 Skill 不是一次性工具——它随着你的使用变得越来越懂你。
-
-- **每次训练后跟 AI 聊几句**：不只是记数据，说说今天的体感、哪里酸、心情怎样。AI 会记住你的偏好、弱项和进步节奏
-- **训练记录越多，建议越精准**：AI 会参考你上周的重量、上次的 RPE、甚至两个月前的旧伤来调整今天的计划
-- **你的对话是它的记忆**：你说过"右肩不太舒服"或"早上训练状态更好"——下次它会主动问
-
-简单说：**别只把训练日志当记事本，把它当教练。你越用它，它越懂你。**
-
----
-
-## 选择你的教练
-
-预设训练方法论来自**凯圣王×谭指导**（偏向力量增长和三分化训练）。如果你的目标是塑形、减脂、瑜伽或体态矫正，我们提供了一份 **[教练风格指南](references/coach-guide.md)**，介绍了 6 位不同方向的健身博主：
-
-| 教练 | 方向 | 适合 |
-|:---|:---|:---|
-| **周六野 Zoey** | 塑形、减脂 | 新手到中级，温柔鼓励 |
-| **帕梅拉 Pamela Reif** | HIIT、全身塑形 | 有基础，追求效率 |
-| **林芊妤 Coffee Lam** | 瑜伽、瑜伽塑形 | 喜欢瑜伽和拉伸 |
-| **欧阳春晓** | 瘦腿、体态矫正 | 关注腿型和体态 |
-| **韩小四** | 温和减脂 | 零基础、怕受伤 |
-| **海洋饼干** | 减脂、全身塑形 | 中等强度，训练饮食并重 |
-
-初始化时告诉 AI "我想跟周六野练" 或 "力量日跟凯圣王，有氧跟帕梅拉"——选你喜欢的就好。
-
----
-
-## 你会得到什么
-
-- 一个带训练日志、属性成长、恢复判断的教练系统
-- 一套可选开启的剧情模式
-- 一组可自定义的世界模板、叙事模板和训练方法论参考
-- 一套本地文档结构，方便长期维护与迁移
-
----
-
-## 🚀 快速开始
-
-1. 克隆或下载本仓库到任意目录。整个仓库就是你的存档——不需要安装，不需要注册到任何平台，拿到就能开玩。
-2. 在 AI 对话中说“开始训练”或“初始化档案”。
-3. AI 会自动读取示例模板并引导你完成首次设定。
-
-> 💡 **提示**：AI Agent 会自动处理文件创建，无需手动操作。
-
----
-
-### 📋 手动操作方式
-
-```bash
-# 克隆项目
-git clone https://github.com/chenklein26-maker/fitness-coach-rpg.git
-cd fitness-coach-rpg
-
-# 方式一：用脚本初始化（需要 Python 3.8+）
-python scripts/init_profile.py --name 你的名字 --theme 武侠
-
-# 方式二：手动复制模板
-cp -r assets/starter-profile user-data
-# 然后编辑 user-data/PROFILE.md 和 CURRENT-STATE.json 填入你的信息
-```
-
-> 脚本零外部依赖，只用 Python 标准库。没有 Python 环境？见下方[降级路径](#降级路径)。
-
-### 两种起步方式
-
-- **懒得自己搭世界？** 把 `worlds/default/` 里的 `WORLD-LOG.md` 复制到 `user-data/story/WORLD.md`，这是一套完整的预置世界（共振法则剑与魔法）。
-- **想自己创建世界？** 用 `assets/starter-profile/story/WORLD.md` 模板，从零填自己的设定。
-
----
-
-## 运行环境
-
-这个仓库不是需要注册的平台技能插件——它就是一份完整的“存档”，SKILL.md 是这份存档的行为说明书。只要你的 AI 环境能读写本地文件，就能玩：
-
-- 可读取和写入本地文件
-- 可持续访问同一工作区中的多个 Markdown 文件
-- 最好支持时间获取、长期上下文或 Skill/工具调用
-
-它不是“复制到任意聊天窗口就能完整运行”的纯提示词项目，更接近一个依赖本地文件结构的工作区模板。
-
-### 降级路径
-
-没有 Python 环境，或 AI 环境无法读写本地文件时，也能用：
-
-- AI 直接手写 `user-data/sessions/YYYY-MM-DD.json`（格式见 `assets/starter-profile/example-session.json`，字段简单，AI 能写准）
-- AI 手动维护 `user-data/CURRENT-STATE.json` 的 exp/level/属性（脚本只是让更新更可靠，不是必需）
-- 把 `CURRENT-STATE.json` 和 `story/WORLD.md` 当作长期上下文资料
-- 让 AI 根据这些文件提供训练建议、复盘和剧情推进
-
-### 关于能力依赖
-
-`SKILL.md` 不再使用 `requires` 字段。需要的能力：
-
-- 时间获取：系统时间工具或手动输入
-- 文件读写：本地 JSON/Markdown 读写
-- 可选：Python 3.8+（用于脚本，没有也能跑）
-
----
-
-## 目录结构
+在这个项目中直接对 AI 说：
 
 ```text
-├── README.md
-├── SKILL.md
-├── CHANGELOG.md
-├── references/
-│   ├── coach-wang-tan-method.md
-│   ├── coach-guide.md
-│   ├── narrative-templates.md
-│   ├── rpg-rules.md
-│   └── story-engine.md
-├── worlds/
-│   └── default/
-│       ├── WORLD-LOG.md
-│       └── STORY-LOG.md
-├── assets/
-│   └── starter-profile/
-│       ├── PROFILE.md
-│       ├── CURRENT-PLAN.md
-│       ├── CURRENT-STATE.json
-│       ├── example-session.json
-│       └── story/
-│           ├── WORLD.md
-│           └── STATE.json
-├── scripts/
-│   ├── init_profile.py
-│   ├── append_session.py
-│   ├── update_summary.py
-│   └── validate_state.py
-└── examples/
-    ├── completed-save/
-    │   ├── README.md
-    │   ├── CURRENT-STATE.json
-    │   ├── sessions/
-    │   │   └── 2026-07-29.json
-    │   └── story/
-    │       └── STATE.json
-    ├── MINIMAL-RUN.md
-    ├── AUTHOR-WORLD-SAMPLE.md
-    └── AUTHOR-DESIGN-NOTES.md
+今天练。
 ```
 
----
+教练会先读取个人档案、当前状态和计划，只补问睡眠、精神状态、异常酸痛或疼痛，然后一次性给出完整计划。
 
-## 核心设计
+推荐交互：
 
-- `user-data/PROFILE.md`
-  静态个人档案（姓名、目标、设备、教练体系、伤病史）。
-- `user-data/CURRENT-STATE.json`
-  动态状态快照（等级、属性、EXP、recovery、recent_bests），由 `update_summary.py` 维护。
-- `user-data/CURRENT-PLAN.md`
-  本周训练计划，由 AI 或用户维护。
-- `user-data/sessions/YYYY-MM-DD.json`
-  每日训练记录（动作、组数、重量、RPE、疼痛），追加不覆盖。
-- `user-data/story/WORLD.md`
-  静态世界设定。记录世界规则、角色背景、NPC 和地点。
-- `user-data/story/STATE.json`
-  动态剧情状态（章节、任务、伏笔）。
-- `references/story-engine.md`
-  训练如何映射到叙事的通用逻辑，不绑定固定主线。
+```text
+用户：今天练。
+教练：先告诉我昨晚睡眠、现在精神状态，以及是否有异常酸痛或疼痛。
+用户：睡了 7 小时，精神 7/10，没有疼痛。
+教练：今天进行全身 A。以下是完整计划；训练中只有器械占用、重量不合适或不适时再告诉我。
+```
 
----
+训练中正常执行即可。遇到器械占用、重量不合适、动作不熟、异常疲劳或疼痛时，再随时反馈。
 
-## 自定义建议
+训练后可以自然语言汇报：
 
-你可以只改 3 件事，就做出自己的版本：
+```text
+坐姿推胸热身 10 公斤 12 次，正式组 20 公斤 12 次和 11 次，最后一组 RPE 7。
+坐姿划船 25 公斤两组，各 10 次，右手有点先累。
+腿举没做，器械一直有人。总共 42 分钟，整体 RPE 7，没有疼痛。
+```
 
-1. 换教练方法论
-   预设的是凯圣王×谭指导（力量/增肌向），不同训练目标可选 [教练风格指南](references/coach-guide.md) 中的其他教练。也可以完全替换为你熟悉的其他训练体系。
+AI 会将已知信息整理为结构化记录。没有提供的字段保持为空，不会被编造。
 
-2. 换 RPG 主题
-   在 `references/rpg-rules.md` 中新增你的称号体系和主题语言。
+## 训练结构
 
-3. 换世界观
-   不想自己搭？直接用 `worlds/default/` 里的预置世界。想从头来？从 `assets/starter-profile/story/WORLD.md` 开始定义你自己的设定。
+默认采用全身 A/B 顺序轮换，不绑定星期。
 
----
+### 全身 A
 
-示例内容仅用于说明结构，不代表唯一玩法。每个使用者都可以开出自己的档，定制自己的世界和角色。
+1. 坐姿推胸；
+2. 坐姿划船；
+3. 哑铃罗马尼亚硬拉；
+4. 箱式深蹲或腿举。
 
-`examples/` 中的设计笔记和世界示例用于启发，不要求照搬。
+### 全身 B
 
----
+1. 高位下拉；
+2. 上斜器械推胸；
+3. 臀推或臀桥；
+4. 低台阶上台或腿举。
 
-## 👤 关于作者
+每项通常两个正式组、每组 8–12 次，初期目标为 RPE 6–7 或 RIR 3–4。某周只训练一次时，下次继续另一套，不重置顺序。
 
-- **小红书**：[@龙酱](https://www.xiaohongshu.com/user/profile/5c63da27000000001202556a)
-- **GitHub**：https://github.com/chenklein26-maker/fitness-coach-rpg
+## 动态调整
 
----
+- 两个正式组都达到 12 次，动作稳定、无疼痛，且强度不高于 RPE 8：下次最小幅度加重；
+- 完成 8–11 次：保持重量，优先增加次数；
+- 未达到 8 次或强度达到 RPE 9：降低约 5%–10%；
+- 停练 7–14 天：参考重量降低约 10%；
+- 停练 15–30 天：参考重量降低约 20%；
+- 停练超过 30 天：重新建立基线；
+- 连续三次停滞：检查技术、组间休息、恢复和动作适配；
+- 连续两次最高工作重量下降超过 10%：安排减量训练。
 
-## 许可
+脚本负责保存、校验、汇总和产生规则化建议；最终训练计划仍由 AI 结合用户当天状态解释和应用。
 
-详见 [LICENSE](./LICENSE)。
+## 数据文件
+
+- `user-data/PROFILE.md`：长期稳定的个人资料；
+- `user-data/CURRENT-PLAN.md`：当前训练顺序和阶段规则；
+- `user-data/CURRENT-STATE.json`：恢复状态、近期可比表现和下一次建议；
+- `user-data/sessions/YYYY-MM-DD.json`：逐次训练事实，只追加不覆盖；
+- `SKILL.md`：教练行为说明；
+- `AGENTS.md`：确保新任务自动进入纯教练流程。
+
+持久连续性来自这些本地文件，而不是聊天窗口本身。`user-data/` 已被 Git 忽略，个人训练数据不会随代码提交。
+
+## 脚本
+
+项目使用 Python 3.8+ 标准库，无第三方依赖。
+
+```text
+python scripts/init_profile.py --name 你的名字
+python scripts/append_session.py --file session.json
+python scripts/update_summary.py
+python scripts/validate_state.py
+python scripts/test_regression.py
+```
+
+自动测试必须使用临时数据目录，不能接触真实 `user-data`。当前测试入口已经内置隔离机制。
+
+## 安全边界
+
+训练中出现锐痛、关节不稳、明显肿胀或疼痛持续加重时，停止相关训练。AI 不诊断疾病，也不替代医生或康复专业人员。
+
+## 来源与许可
+
+本工作区基于 [chenklein26-maker/fitness-coach-rpg](https://github.com/chenklein26-maker/fitness-coach-rpg) 调整。原项目与本工作区均使用 MIT License，详见 `LICENSE`。
