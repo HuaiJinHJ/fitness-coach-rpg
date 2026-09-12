@@ -49,6 +49,7 @@ class ProfileToolTests(unittest.TestCase):
         self.assertIn("全身 A", plan)
         self.assertIn("全身 B", plan)
         self.assertIn("RIR 3-4", plan)
+        self.assertFalse((self.data_dir / "story").exists())
 
     def test_theme_argument_is_not_available(self):
         result = self.run_tool(INIT, "--theme", "武侠")

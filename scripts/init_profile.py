@@ -34,7 +34,7 @@ def main():
 
     if USER_DATA.exists():
         shutil.rmtree(USER_DATA)
-    shutil.copytree(STARTER, USER_DATA)
+    shutil.copytree(STARTER, USER_DATA, ignore=shutil.ignore_patterns("story"))
 
     # 填初始值
     state_file = USER_DATA / "CURRENT-STATE.json"
