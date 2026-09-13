@@ -87,16 +87,16 @@ class ProfileToolTests(unittest.TestCase):
         self.visualizer_dir.mkdir(parents=True, exist_ok=True)
         (self.visualizer_dir / "current-workout.js").write_text(
             """(function () {
-  window.CURRENT_WORKOUT = {
-    schemaVersion: "1.0",
-    initialized: true,
-    planLabel: "下一次",
-    name: "训练日一",
-    status: "可以开始",
-    prescription: { sets: 2, reps: "8-12", rpe: "6-7" },
-    notes: ["保持动作可控"],
-    exercises: [{ name: "器械推胸", order: 1 }]
-  };
+  window.CURRENT_WORKOUT = Object.freeze({
+    "schemaVersion": "1.0",
+    "initialized": true,
+    "planLabel": "下一次",
+    "name": "训练日一",
+    "status": "可以开始",
+    "prescription": { "sets": 2, "reps": "8-12", "rpe": "6-7" },
+    "notes": ["保持动作可控"],
+    "exercises": [{ "name": "器械推胸", "order": 1 }]
+  });
 })();
 """,
             encoding="utf-8",
@@ -137,7 +137,7 @@ class ProfileToolTests(unittest.TestCase):
         card_path = self.visualizer_dir / "current-workout.js"
         self.assertTrue(card_path.exists(), "初始化应生成本地 GIF 训练卡")
         card = card_path.read_text(encoding="utf-8")
-        self.assertIn("initialized: false", card)
+        self.assertIn('"initialized": false', card)
         self.assertNotIn("坐姿推胸", card)
 
     def test_incomplete_profile_can_resume_without_overwriting_partial_answers(self):
@@ -165,6 +165,29 @@ class ProfileToolTests(unittest.TestCase):
         second = self.run_tool(INIT)
         self.assertNotEqual(second.returncode, 0)
 
+    def test_force_resets_incomplete_profile(self):
+        self.assertEqual(self.initialize().returncode, 0)
+        profile_path = self.data_dir / "PROFILE.md"
+        profile_path.write_text("不应保留的残缺档案", encoding="utf-8")
+        result = self.run_tool(INIT, "--force", "--name", "新用户")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        profile = profile_path.read_text(encoding="utf-8")
+        self.assertNotIn("不应保留的残缺档案", profile)
+        self.assertIn("新用户", profile)
+
+    def test_force_keeps_existing_profile_when_destination_is_unwritable(self):
+        self.assertEqual(self.initialize().returncode, 0)
+        profile_path = self.data_dir / "PROFILE.md"
+        profile_path.write_text("必须保留的现有档案", encoding="utf-8")
+        (self.visualizer_dir / "current-workout.js").unlink()
+        self.visualizer_dir.rmdir()
+        self.visualizer_dir.write_text("阻止创建目录", encoding="utf-8")
+
+        result = self.run_tool(INIT, "--force", "--name", "新用户")
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(profile_path.read_text(encoding="utf-8"), "必须保留的现有档案")
+
     def test_visualizer_prompts_when_personal_workout_is_not_initialized(self):
         page = VISUALIZER_INDEX.read_text(encoding="utf-8")
         self.assertIn("workout.initialized === false", page)
@@ -172,9 +195,10 @@ class ProfileToolTests(unittest.TestCase):
 
     def test_skill_marks_generated_workout_card_as_initialized(self):
         skill = SKILL.read_text(encoding="utf-8")
-        self.assertIn("`initialized: true`", skill)
+        self.assertIn('`"initialized": true`', skill)
         self.assertIn("`prescription`", skill)
         self.assertIn("`exercises`", skill)
+        self.assertIn("合法 JSON", skill)
         self.assertIn("python scripts/validate_onboarding.py", skill)
 
     def test_readme_does_not_present_personal_plan_as_default(self):
@@ -192,9 +216,12 @@ class ProfileToolTests(unittest.TestCase):
     def test_onboarding_validator_rejects_each_incomplete_artifact(self):
         cases = (
             "profile_placeholders",
+            "profile_empty_values",
             "plan_placeholders",
+            "plan_empty_sections",
             "workout_missing",
             "workout_not_initialized",
+            "workout_malformed",
         )
         for case in cases:
             with self.subTest(case=case):
@@ -205,24 +232,59 @@ class ProfileToolTests(unittest.TestCase):
                         encoding="utf-8",
                     )
                     expected = "PROFILE.md"
+                elif case == "profile_empty_values":
+                    (self.data_dir / "PROFILE.md").write_text(
+                        """# 个人档案 PROFILE
+
+- **目标**：``
+- **训练水平**：``
+- **设备**：``
+- **现实频率**：``
+- **可用时长**：``
+- **伤病或动作限制**：``
+""",
+                        encoding="utf-8",
+                    )
+                    expected = "PROFILE.md"
                 elif case == "plan_placeholders":
                     (self.data_dir / "CURRENT-PLAN.md").write_text(
                         (ROOT / "assets" / "starter-profile" / "CURRENT-PLAN.md").read_text(encoding="utf-8"),
                         encoding="utf-8",
                     )
                     expected = "CURRENT-PLAN.md"
+                elif case == "plan_empty_sections":
+                    (self.data_dir / "CURRENT-PLAN.md").write_text(
+                        """# 当前计划 CURRENT-PLAN
+
+## 计划依据
+
+## 当前阶段
+
+## 动作安排
+
+## 调整与安全边界
+""",
+                        encoding="utf-8",
+                    )
+                    expected = "CURRENT-PLAN.md"
                 elif case == "workout_missing":
                     (self.visualizer_dir / "current-workout.js").unlink()
                     expected = "current-workout.js"
-                else:
+                elif case == "workout_not_initialized":
                     workout = self.visualizer_dir / "current-workout.js"
                     workout.write_text(
                         workout.read_text(encoding="utf-8").replace(
-                            "initialized: true", "initialized: false"
+                            '"initialized": true', '"initialized": false'
                         ),
                         encoding="utf-8",
                     )
                     expected = "initialized: true"
+                elif case == "workout_malformed":
+                    (self.visualizer_dir / "current-workout.js").write_text(
+                        "window.CURRENT_WORKOUT = Object.freeze({initialized: true, exercises: [{name:}]});",
+                        encoding="utf-8",
+                    )
+                    expected = "JSON"
                 result = self.run_tool(VALIDATE_ONBOARDING)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(expected, result.stdout)

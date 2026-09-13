@@ -30,7 +30,7 @@ description: 本地文件驱动的纯健身教练。用于开始训练、生成�
 1. 运行 `python scripts/init_profile.py --name <用户提供姓名>`；未提供姓名时省略 `--name`；
 2. 把用户明确提供的信息写入 `user-data/PROFILE.md` 和 `CURRENT-STATE.json`；
 3. 根据目标、经验、器械、频率、时长和动作限制生成 `user-data/CURRENT-PLAN.md`；
-4. 生成 `extensions/exercise-visualizer/current-workout.js`，格式参考 `current-workout.example.js`；把 `initialized` 设置为 `initialized: true`，填写 `planLabel`、`name`、`status`、`prescription`、`notes` 和 `exercises`，且只列入当前计划中已确认的动作；
+4. 生成 `extensions/exercise-visualizer/current-workout.js`，格式参考 `current-workout.example.js`；`Object.freeze(...)` 内部必须保持合法 JSON（所有键和字符串都使用双引号），把 `"initialized": true` 写入对象，填写 `planLabel`、`name`、`status`、`prescription`、`notes` 和 `exercises`，且只列入当前计划中已确认的动作；
 5. 运行 `python scripts/validate_state.py`；
 6. 运行 `python scripts/validate_onboarding.py`，确认档案、个人计划和 GIF 训练卡均已完成；
 7. 两项校验都通过后，说明已保存的条件、计划结构和“今天练”的下一步用法。任何一项失败时先修正，不把半完成状态称为初始化成功。

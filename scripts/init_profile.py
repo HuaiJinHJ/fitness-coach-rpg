@@ -9,6 +9,7 @@ import argparse
 import os
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -60,6 +61,58 @@ def preflight_templates():
     load_json(STARTER / "CURRENT-STATE.json")
 
 
+def apply_name(profile_dir, name):
+    """Apply an optional name to a prepared or resumed profile."""
+    state_file = profile_dir / "CURRENT-STATE.json"
+    state = load_json(state_file)
+    if name:
+        state["profile"]["name"] = name
+    atomic_write(state_file, state)
+
+    profile_file = profile_dir / "PROFILE.md"
+    text = profile_file.read_text(encoding="utf-8")
+    if name:
+        text = text.replace("<你的名字>", name)
+    profile_file.write_text(text, encoding="utf-8")
+
+
+def reset_profile(name):
+    """Prepare replacements first, then swap them in while preserving rollback data."""
+    preflight_templates()
+    USER_DATA.parent.mkdir(parents=True, exist_ok=True)
+    VISUALIZER.mkdir(parents=True, exist_ok=True)
+    workout_file = VISUALIZER / "current-workout.js"
+    previous_workout = workout_file.read_bytes() if workout_file.exists() else None
+
+    with tempfile.TemporaryDirectory(prefix=".fitness-init-", dir=USER_DATA.parent) as temp:
+        temp_dir = Path(temp)
+        staged_profile = temp_dir / "user-data"
+        previous_profile = temp_dir / "previous-user-data"
+        staged_workout = temp_dir / "current-workout.js"
+        shutil.copytree(STARTER, staged_profile, ignore=shutil.ignore_patterns("story"))
+        shutil.copy2(WORKOUT_TEMPLATE, staged_workout)
+        apply_name(staged_profile, name)
+
+        profile_moved = False
+        workout_replaced = False
+        try:
+            os.replace(staged_workout, workout_file)
+            workout_replaced = True
+            if USER_DATA.exists():
+                os.replace(USER_DATA, previous_profile)
+                profile_moved = True
+            os.replace(staged_profile, USER_DATA)
+        except Exception:
+            if profile_moved and not USER_DATA.exists():
+                os.replace(previous_profile, USER_DATA)
+            if workout_replaced:
+                if previous_workout is None:
+                    workout_file.unlink(missing_ok=True)
+                else:
+                    workout_file.write_bytes(previous_workout)
+            raise
+
+
 def main():
     parser = argparse.ArgumentParser(description="初始化训练档案")
     parser.add_argument("--name", help="你的名字")
@@ -70,7 +123,9 @@ def main():
     )
     args = parser.parse_args()
 
-    resume_incomplete = USER_DATA.exists() and is_incomplete_profile(USER_DATA)
+    resume_incomplete = (
+        USER_DATA.exists() and not args.force and is_incomplete_profile(USER_DATA)
+    )
 
     if USER_DATA.exists() and not args.force and not resume_incomplete:
         print(f"[ERROR] {USER_DATA} 已存在。用 --force 覆盖（会删除现有数据）。")
@@ -82,27 +137,9 @@ def main():
         if not workout_file.exists():
             VISUALIZER.mkdir(parents=True, exist_ok=True)
             shutil.copy2(WORKOUT_TEMPLATE, workout_file)
+        apply_name(USER_DATA, args.name)
     else:
-        preflight_templates()
-        if USER_DATA.exists():
-            shutil.rmtree(USER_DATA)
-        shutil.copytree(STARTER, USER_DATA, ignore=shutil.ignore_patterns("story"))
-        VISUALIZER.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(WORKOUT_TEMPLATE, VISUALIZER / "current-workout.js")
-
-    # 填初始值
-    state_file = USER_DATA / "CURRENT-STATE.json"
-    state = load_json(state_file)
-    if args.name:
-        state["profile"]["name"] = args.name
-    atomic_write(state_file, state)
-
-    # 同步 PROFILE.md 占位符
-    profile_file = USER_DATA / "PROFILE.md"
-    text = profile_file.read_text(encoding="utf-8")
-    if args.name:
-        text = text.replace("<你的名字>", args.name)
-    profile_file.write_text(text, encoding="utf-8")
+        reset_profile(args.name)
 
     if not resume_incomplete:
         print(f"[OK] 已初始化 {USER_DATA}")
