@@ -358,7 +358,7 @@
     </aside>
 
     <footer class="footer">
-      训练计划来自 Fitness Coach RPG；GIF 由 ExerciseGymGifsDB v1.1.0 提供。
+      训练计划来自 Fitness Coach；GIF 由 ExerciseGymGifsDB v1.1.0 提供。定制说明：references/exercise-gif-customization.md
     </footer>
   </main>
 
@@ -373,9 +373,18 @@
       const grid = document.getElementById("exercise-grid");
       const status = document.getElementById("load-status");
 
-      if (!map || !workout || !Array.isArray(workout.exercises)) {
-        grid.innerHTML = '<p class="fatal">本地训练数据未能读取。请确认 exercise-map.js 和 current-workout.js 与 index.html 位于同一文件夹。</p>';
-        status.textContent = "本地数据读取失败";
+      if (!map) {
+        grid.innerHTML = '<p class="fatal">动作映射未能读取。请确认 exercise-map.js 与 index.html 位于同一文件夹。</p>';
+        status.textContent = "动作映射读取失败";
+        return;
+      }
+
+      if (!workout || workout.initialized === false || !Array.isArray(workout.exercises) || workout.exercises.length === 0) {
+        grid.innerHTML = '<p class="fatal">尚未生成个人训练卡。请先在项目中对 AI 说“初始化健身教练”。初始化会在本文件夹生成本地 current-workout.js。</p>';
+        status.textContent = "等待初始化";
+        document.getElementById("plan-label").textContent = "第一次使用";
+        document.getElementById("workout-title").textContent = "请先初始化健身教练";
+        document.title = "请先初始化健身教练 · 动作可视化";
         return;
       }
 

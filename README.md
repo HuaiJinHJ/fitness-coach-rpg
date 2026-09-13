@@ -65,6 +65,8 @@ AI 会将已知信息整理为结构化记录。没有提供的字段保持为�
 
 网络或 CDN 不可用时，页面自动保留文字训练卡。训练计划变化后，需要同步更新本地 `current-workout.js`；删除整个扩展不会影响教练、训练计划或历史记录。
 
+需要为自己的计划增加或替换动作时，请看 [`references/exercise-gif-customization.md`](references/exercise-gif-customization.md)。其中包含素材仓库、固定版本接口、动作 ID 查找、中文映射和验证方法。
+
 ## 动态调整
 
 - 两个正式组都达到 12 次，动作稳定、无疼痛，且强度不高于 RPE 8：下次最小幅度加重；

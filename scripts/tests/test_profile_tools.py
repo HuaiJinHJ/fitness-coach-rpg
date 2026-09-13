@@ -10,6 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 INIT = ROOT / "scripts" / "init_profile.py"
 VALIDATE = ROOT / "scripts" / "validate_state.py"
+VISUALIZER_INDEX = ROOT / "extensions" / "exercise-visualizer" / "index.html"
+SKILL = ROOT / "SKILL.md"
 
 
 class ProfileToolTests(unittest.TestCase):
@@ -82,6 +84,17 @@ class ProfileToolTests(unittest.TestCase):
         second = self.run_tool(INIT, "--name", "其他人")
         self.assertNotEqual(second.returncode, 0)
         self.assertEqual(profile_path.read_text(encoding="utf-8"), "我的现有档案")
+
+    def test_visualizer_prompts_when_personal_workout_is_not_initialized(self):
+        page = VISUALIZER_INDEX.read_text(encoding="utf-8")
+        self.assertIn("workout.initialized === false", page)
+        self.assertIn("请先在项目中对 AI 说“初始化健身教练”", page)
+
+    def test_skill_marks_generated_workout_card_as_initialized(self):
+        skill = SKILL.read_text(encoding="utf-8")
+        self.assertIn("`initialized: true`", skill)
+        self.assertIn("`prescription`", skill)
+        self.assertIn("`exercises`", skill)
 
     def test_validate_accepts_complete_pure_coach_state_and_ignores_story(self):
         self.assertEqual(self.initialize().returncode, 0)
