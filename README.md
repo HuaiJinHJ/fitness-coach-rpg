@@ -65,6 +65,16 @@ AI 会将已知信息整理为结构化记录。没有提供的字段保持为�
 
 每项通常两个正式组、每组 8–12 次，初期目标为 RPE 6–7 或 RIR 3–4。某周只训练一次时，下次继续另一套，不重置顺序。
 
+## 动作 GIF 可视化
+
+`extensions/exercise-visualizer/` 是独立展示层。双击其中的 `index.html`，即可查看从当前计划派生的“下一次：全身 A”训练卡和动作 GIF，无需服务器、数据库、npm 或额外运行环境。
+
+- `exercise-map.js`：只保存当前使用动作与 ExerciseGymGifsDB canonical ID 的映射；
+- `current-workout.js`：保存从 `user-data/CURRENT-PLAN.md` 派生的本次展示数据，不是训练记录的事实源；
+- `index.html`：加载本地数据，并从固定版本 `v1.1.0` 获取 GIF、主要肌群、器械和动作说明。
+
+当前展示明确选择全身 A 的腿举变式，共包含坐姿推胸、坐姿划船、哑铃罗马尼亚硬拉和 45° 腿举。网络或 CDN 不可用时，页面自动保留文字训练卡。训练计划变化后，需要同步更新 `current-workout.js`；删除整个扩展不会影响教练、训练计划或历史记录。
+
 ## 动态调整
 
 - 两个正式组都达到 12 次，动作稳定、无疼痛，且强度不高于 RPE 8：下次最小幅度加重；
@@ -110,3 +120,5 @@ python scripts/test_regression.py
 ## 来源与许可
 
 本工作区基于 [chenklein26-maker/fitness-coach-rpg](https://github.com/chenklein26-maker/fitness-coach-rpg) 调整。原项目与本工作区均使用 MIT License，详见 `LICENSE`。
+
+动作元数据和远程 GIF 来自 [ExerciseGymGifsDB](https://github.com/JahelCuadrado/ExerciseGymGifsDB)，固定使用 `v1.1.0`。本仓库不复制 GIF 文件；GIF 权利归各自权利人所有。

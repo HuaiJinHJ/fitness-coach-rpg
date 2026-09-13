@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>下一次训练 · 动作可视化</title>
+  <style>
+    :root {
+      --ink: #182018;
+      --muted: #667064;
+      --paper: #f2efe6;
+      --card: #fffdf7;
+      --line: #d6d0c0;
+      --green: #1f563d;
+      --lime: #d8f06a;
+      --amber: #b65f24;
+      --shadow: 0 18px 46px rgba(24, 32, 24, 0.11);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(31, 86, 61, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(31, 86, 61, 0.045) 1px, transparent 1px),
+        var(--paper);
+      background-size: 24px 24px;
+      font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+      line-height: 1.55;
+    }
+
+    .shell {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 42px 0 72px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(28px, 6vw, 58px);
+      color: #f7f4ea;
+      background: var(--green);
+      border-radius: 28px 28px 8px 28px;
+      box-shadow: var(--shadow);
+    }
+
+    .hero::after {
+      content: "A";
+      position: absolute;
+      right: -16px;
+      bottom: -88px;
+      color: rgba(216, 240, 106, 0.15);
+      font: 700 clamp(190px, 38vw, 350px)/1 Georgia, serif;
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--lime);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+    }
+
+    h1, h2, p { margin-top: 0; }
+
+    h1 {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 14px;
+      font-family: "Songti SC", "STSong", Georgia, serif;
+      font-size: clamp(2.5rem, 8vw, 5.6rem);
+      font-weight: 700;
+      letter-spacing: -0.06em;
+      line-height: 0.95;
+    }
+
+    .hero-summary {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0;
+    }
+
+    .hero-summary span {
+      padding: 7px 12px;
+      color: var(--ink);
+      background: var(--lime);
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 800;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 18px;
+      margin: 46px 2px 18px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      font-family: "Songti SC", "STSong", Georgia, serif;
+      font-size: clamp(1.7rem, 4vw, 2.5rem);
+    }
+
+    .section-heading p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .exercise-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 22px;
+    }
+
+    .exercise-card {
+      min-width: 0;
+      overflow: hidden;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 8px 24px 24px 24px;
+      box-shadow: 0 8px 24px rgba(24, 32, 24, 0.07);
+      animation: rise 520ms both;
+      animation-delay: calc(var(--order) * 70ms);
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .media {
+      position: relative;
+      display: grid;
+      min-height: 260px;
+      place-items: center;
+      overflow: hidden;
+      background: #e8e5dc;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .media img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-height: 390px;
+      object-fit: contain;
+      background: #fff;
+    }
+
+    .media-state {
+      max-width: 250px;
+      padding: 28px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .media-state strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--amber);
+      font-family: "Songti SC", "STSong", Georgia, serif;
+      font-size: 1.2rem;
+    }
+
+    .loading-dot {
+      width: 38px;
+      height: 38px;
+      margin-bottom: 12px;
+      border: 3px solid rgba(31, 86, 61, 0.18);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 800ms linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .card-body { padding: 22px; }
+
+    .card-kicker {
+      margin: 0 0 6px;
+      color: var(--green);
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .card-title {
+      margin-bottom: 16px;
+      font-family: "Songti SC", "STSong", Georgia, serif;
+      font-size: clamp(1.35rem, 3vw, 1.75rem);
+      line-height: 1.2;
+    }
+
+    .prescription {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 0 0 16px;
+    }
+
+    .metric {
+      padding: 11px 12px;
+      background: #f0eee5;
+      border-radius: 10px;
+    }
+
+    .metric dt {
+      color: var(--muted);
+      font-size: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .metric dd {
+      margin: 3px 0 0;
+      font-size: 1rem;
+      font-weight: 900;
+    }
+
+    .source-meta {
+      display: grid;
+      gap: 5px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .source-meta b { color: var(--ink); }
+
+    .instructions-block {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--line);
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .instructions-block h3 {
+      margin: 0 0 8px;
+      color: var(--ink);
+      font-size: 0.92rem;
+    }
+
+    .instructions-block ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .instructions-block li + li { margin-top: 5px; }
+
+    .translation-note {
+      margin-bottom: 8px;
+      color: var(--amber);
+      font-weight: 800;
+    }
+
+    details {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--line);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    summary {
+      color: var(--green);
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    details ol { padding-left: 20px; }
+
+    .session-notes {
+      margin-top: 26px;
+      padding: 24px;
+      background: rgba(255, 253, 247, 0.78);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+    }
+
+    .session-notes h2 {
+      margin-bottom: 10px;
+      font: 700 1.25rem/1.2 "Songti SC", "STSong", Georgia, serif;
+    }
+
+    .session-notes ul {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 24px;
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+
+    .footer {
+      margin-top: 22px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      text-align: center;
+    }
+
+    .fatal {
+      padding: 22px;
+      color: #7a271a;
+      background: #fff1ea;
+      border: 1px solid #e8aa91;
+      border-radius: 16px;
+    }
+
+    @media (max-width: 720px) {
+      .shell { width: min(100% - 20px, 560px); padding-top: 10px; }
+      .hero { border-radius: 20px 20px 6px 20px; }
+      .exercise-grid { grid-template-columns: 1fr; gap: 16px; }
+      .section-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
+      .media { min-height: 230px; }
+      .session-notes ul { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero" aria-labelledby="workout-title">
+      <p class="eyebrow" id="plan-label">下一次训练</p>
+      <h1 id="workout-title">正在读取计划…</h1>
+      <p class="hero-summary" id="workout-summary" aria-label="训练概要"></p>
+    </header>
+
+    <section aria-labelledby="exercise-heading">
+      <div class="section-heading">
+        <h2 id="exercise-heading">今日动作</h2>
+        <p id="load-status" role="status" aria-live="polite">正在读取本地训练数据</p>
+      </div>
+      <div class="exercise-grid" id="exercise-grid"></div>
+    </section>
+
+    <aside class="session-notes" aria-labelledby="notes-heading">
+      <h2 id="notes-heading">开始前记住</h2>
+      <ul id="session-notes"></ul>
+    </aside>
+
+    <footer class="footer">
+      训练计划来自 Fitness Coach RPG；GIF 由 ExerciseGymGifsDB v1.1.0 提供。
+    </footer>
+  </main>
+
+  <script src="exercise-map.js"></script>
+  <script src="current-workout.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      const map = window.EXERCISE_MAP;
+      const workout = window.CURRENT_WORKOUT;
+      const grid = document.getElementById("exercise-grid");
+      const status = document.getElementById("load-status");
+
+      if (!map || !workout || !Array.isArray(workout.exercises)) {
+        grid.innerHTML = '<p class="fatal">本地训练数据未能读取。请确认 exercise-map.js 和 current-workout.js 与 index.html 位于同一文件夹。</p>';
+        status.textContent = "本地数据读取失败";
+        return;
+      }
+
+      document.getElementById("plan-label").textContent = workout.planLabel + "训练";
+      document.getElementById("workout-title").textContent = workout.name;
+      document.title = workout.planLabel + "：" + workout.name + " · 动作可视化";
+
+      const summary = document.getElementById("workout-summary");
+      [
+        workout.exercises.length + " 个动作",
+        workout.prescription.sets + " 组 × " + workout.prescription.reps + " 次",
+        "目标 RPE " + workout.prescription.rpe
+      ].forEach(function (text) {
+        const badge = document.createElement("span");
+        badge.textContent = text;
+        summary.appendChild(badge);
+      });
+
+      const notes = document.getElementById("session-notes");
+      workout.notes.forEach(function (note) {
+        const item = document.createElement("li");
+        item.textContent = note;
+        notes.appendChild(item);
+      });
+
+      function addMetric(list, label, value) {
+        const item = document.createElement("div");
+        item.className = "metric";
+        const term = document.createElement("dt");
+        const detail = document.createElement("dd");
+        term.textContent = label;
+        detail.textContent = value;
+        item.append(term, detail);
+        list.appendChild(item);
+      }
+
+      function showPlaceholder(media, title, message) {
+        media.replaceChildren();
+        const state = document.createElement("div");
+        state.className = "media-state";
+        const strong = document.createElement("strong");
+        const text = document.createElement("span");
+        strong.textContent = title;
+        text.textContent = message;
+        state.append(strong, text);
+        media.appendChild(state);
+      }
+
+      function displayName(group, value) {
+        if (!value) return "未提供";
+        const names = map.displayNames && map.displayNames[group];
+        return names && Object.prototype.hasOwnProperty.call(names, value)
+          ? names[value]
+          : value;
+      }
+
+      function appendSteps(container, instructions) {
+        const steps = document.createElement("ol");
+        instructions.forEach(function (instruction) {
+          const step = document.createElement("li");
+          step.textContent = instruction;
+          steps.appendChild(step);
+        });
+        container.appendChild(steps);
+      }
+
+      function addRemoteDetails(body, data, mapping) {
+        const meta = document.createElement("div");
+        meta.className = "source-meta";
+
+        const muscle = document.createElement("span");
+        const muscleLabel = document.createElement("b");
+        muscleLabel.textContent = "主要肌群：";
+        muscle.append(muscleLabel, document.createTextNode(displayName("muscles", data.muscle)));
+
+        const equipment = document.createElement("span");
+        const equipmentLabel = document.createElement("b");
+        equipmentLabel.textContent = "器械：";
+        equipment.append(equipmentLabel, document.createTextNode(displayName("equipment", data.equipment)));
+
+        meta.append(muscle, equipment);
+        body.appendChild(meta);
+
+        const instructionsZh = Array.isArray(mapping.instructionsZh)
+          ? mapping.instructionsZh
+          : [];
+        const instructionsEn = Array.isArray(data.instructions)
+          ? data.instructions.slice(0, 4)
+          : [];
+
+        const instructions = document.createElement("section");
+        instructions.className = "instructions-block";
+        const heading = document.createElement("h3");
+        heading.textContent = "动作要点";
+        instructions.appendChild(heading);
+
+        if (instructionsZh.length > 0) {
+          appendSteps(instructions, instructionsZh);
+          body.appendChild(instructions);
+        } else {
+          const note = document.createElement("p");
+          note.className = "translation-note";
+          note.textContent = "暂无中文说明";
+          instructions.appendChild(note);
+          if (instructionsEn.length > 0) {
+            appendSteps(instructions, instructionsEn);
+          } else {
+            const empty = document.createElement("p");
+            empty.textContent = "数据源未提供原始英文说明。";
+            instructions.appendChild(empty);
+          }
+          body.appendChild(instructions);
+        }
+
+        if (instructionsZh.length > 0 && instructionsEn.length > 0) {
+          const details = document.createElement("details");
+          const summary = document.createElement("summary");
+          summary.textContent = "查看原始英文说明";
+          details.appendChild(summary);
+          appendSteps(details, instructionsEn);
+          body.appendChild(details);
+        }
+      }
+
+      function loadResolvedExercise(card, media, body, mapping) {
+        const endpoint = map.source.apiBase + "/" + mapping.canonicalId + ".json";
+        const controller = new AbortController();
+        const timeout = window.setTimeout(function () { controller.abort(); }, 15000);
+
+        fetch(endpoint, { signal: controller.signal })
+          .then(function (response) {
+            if (!response.ok) throw new Error("HTTP " + response.status);
+            return response.json();
+          })
+          .then(function (data) {
+            if (data.id !== mapping.canonicalId || !data.gifUrl) {
+              throw new Error("数据源返回内容与映射不一致");
+            }
+
+            const image = document.createElement("img");
+            image.alt = card.dataset.exercise + " 动作示范";
+            image.loading = "eager";
+            image.decoding = "async";
+            image.addEventListener("load", function () {
+              media.replaceChildren(image);
+              card.dataset.visualStatus = "loaded";
+            });
+            image.addEventListener("error", function () {
+              showPlaceholder(media, "GIF 暂时不可用", "训练处方仍可正常查看");
+              card.dataset.visualStatus = "fallback";
+            });
+            image.src = data.gifUrl;
+            addRemoteDetails(body, data, mapping);
+          })
+          .catch(function () {
+            showPlaceholder(media, "GIF 暂时不可用", "训练处方仍可正常查看");
+            card.dataset.visualStatus = "fallback";
+          })
+          .finally(function () { window.clearTimeout(timeout); });
+      }
+
+      workout.exercises
+        .slice()
+        .sort(function (a, b) { return a.order - b.order; })
+        .forEach(function (exercise) {
+          const mapping = map.exercises[exercise.name] || {
+            status: "unresolved",
+            note: "动作尚未加入映射表"
+          };
+
+          const card = document.createElement("article");
+          card.className = "exercise-card";
+          card.style.setProperty("--order", exercise.order);
+          card.dataset.exercise = exercise.name;
+          card.dataset.mappingStatus = mapping.status;
+          card.dataset.visualStatus = mapping.status === "resolved" ? "loading" : "unresolved";
+
+          const media = document.createElement("div");
+          media.className = "media";
+
+          if (mapping.status === "resolved") {
+            const spinner = document.createElement("div");
+            spinner.className = "loading-dot";
+            spinner.setAttribute("aria-label", "正在加载动作 GIF");
+            media.appendChild(spinner);
+          } else {
+            showPlaceholder(media, "待确认动作变式", mapping.note || "确认具体动作后再匹配 GIF");
+          }
+
+          const body = document.createElement("div");
+          body.className = "card-body";
+
+          const kicker = document.createElement("p");
+          kicker.className = "card-kicker";
+          kicker.textContent = "动作 " + String(exercise.order).padStart(2, "0");
+
+          const title = document.createElement("h2");
+          title.className = "card-title";
+          title.textContent = exercise.name;
+
+          const prescription = document.createElement("dl");
+          prescription.className = "prescription";
+          addMetric(prescription, "组数 × 次数", workout.prescription.sets + " × " + workout.prescription.reps);
+          addMetric(prescription, "目标强度", "RPE " + workout.prescription.rpe);
+
+          body.append(kicker, title, prescription);
+          card.append(media, body);
+          grid.appendChild(card);
+
+          if (mapping.status === "resolved") {
+            loadResolvedExercise(card, media, body, mapping);
+          }
+        });
+
+      const resolvedOnPage = workout.exercises.filter(function (exercise) {
+        const mapping = map.exercises[exercise.name];
+        return mapping && mapping.status === "resolved";
+      }).length;
+      status.textContent = resolvedOnPage + " 个 GIF 已匹配，其余动作待确认";
+    })();
+  </script>
+</body>
+</html>
