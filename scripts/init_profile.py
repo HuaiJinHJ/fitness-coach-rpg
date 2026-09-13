@@ -26,6 +26,40 @@ VISUALIZER = Path(
 WORKOUT_TEMPLATE = ROOT / "extensions" / "exercise-visualizer" / "current-workout.example.js"
 
 
+def is_incomplete_profile(path):
+    """Return True only for an unfinished scaffold with no workout history."""
+    plan_file = path / "CURRENT-PLAN.md"
+    state_file = path / "CURRENT-STATE.json"
+    if not plan_file.exists() or not state_file.exists():
+        return False
+    sessions_dir = path / "sessions"
+    if sessions_dir.exists() and any(sessions_dir.glob("*.json")):
+        return False
+    try:
+        plan = plan_file.read_text(encoding="utf-8")
+        state = load_json(state_file)
+    except (OSError, ValueError):
+        return False
+    has_plan_placeholders = "<待初始化>" in plan or "<初始化后生成" in plan
+    has_training_history = bool(state.get("exercise_history")) or bool(
+        state.get("next_recommendations")
+    )
+    return has_plan_placeholders and not has_training_history
+
+
+def preflight_templates():
+    """Read every replacement input before a destructive --force reset."""
+    required_files = (
+        STARTER / "PROFILE.md",
+        STARTER / "CURRENT-PLAN.md",
+        STARTER / "CURRENT-STATE.json",
+        WORKOUT_TEMPLATE,
+    )
+    for path in required_files:
+        path.read_bytes()
+    load_json(STARTER / "CURRENT-STATE.json")
+
+
 def main():
     parser = argparse.ArgumentParser(description="初始化训练档案")
     parser.add_argument("--name", help="你的名字")
@@ -36,15 +70,25 @@ def main():
     )
     args = parser.parse_args()
 
-    if USER_DATA.exists() and not args.force:
+    resume_incomplete = USER_DATA.exists() and is_incomplete_profile(USER_DATA)
+
+    if USER_DATA.exists() and not args.force and not resume_incomplete:
         print(f"[ERROR] {USER_DATA} 已存在。用 --force 覆盖（会删除现有数据）。")
         return 1
 
-    if USER_DATA.exists():
-        shutil.rmtree(USER_DATA)
-    shutil.copytree(STARTER, USER_DATA, ignore=shutil.ignore_patterns("story"))
-    VISUALIZER.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(WORKOUT_TEMPLATE, VISUALIZER / "current-workout.js")
+    if resume_incomplete:
+        print(f"[OK] 检测到未完成的空白档案，将继续完善 {USER_DATA}")
+        workout_file = VISUALIZER / "current-workout.js"
+        if not workout_file.exists():
+            VISUALIZER.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(WORKOUT_TEMPLATE, workout_file)
+    else:
+        preflight_templates()
+        if USER_DATA.exists():
+            shutil.rmtree(USER_DATA)
+        shutil.copytree(STARTER, USER_DATA, ignore=shutil.ignore_patterns("story"))
+        VISUALIZER.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(WORKOUT_TEMPLATE, VISUALIZER / "current-workout.js")
 
     # 填初始值
     state_file = USER_DATA / "CURRENT-STATE.json"
@@ -60,7 +104,8 @@ def main():
         text = text.replace("<你的名字>", args.name)
     profile_file.write_text(text, encoding="utf-8")
 
-    print(f"[OK] 已初始化 {USER_DATA}")
+    if not resume_incomplete:
+        print(f"[OK] 已初始化 {USER_DATA}")
     print("   空白档案已建立，等待根据个人条件生成训练计划。")
     return 0
 

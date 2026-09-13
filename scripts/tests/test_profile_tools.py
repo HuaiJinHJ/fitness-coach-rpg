@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 INIT = ROOT / "scripts" / "init_profile.py"
 VALIDATE = ROOT / "scripts" / "validate_state.py"
+VALIDATE_ONBOARDING = ROOT / "scripts" / "validate_onboarding.py"
 VISUALIZER_INDEX = ROOT / "extensions" / "exercise-visualizer" / "index.html"
 SKILL = ROOT / "SKILL.md"
 README = ROOT / "README.md"
@@ -80,13 +81,30 @@ class ProfileToolTests(unittest.TestCase):
         self.assertIn("initialized: false", card)
         self.assertNotIn("坐姿推胸", card)
 
-    def test_existing_profile_is_not_overwritten(self):
+    def test_incomplete_profile_can_resume_without_overwriting_partial_answers(self):
         self.assertEqual(self.initialize().returncode, 0)
         profile_path = self.data_dir / "PROFILE.md"
         profile_path.write_text("我的现有档案", encoding="utf-8")
         second = self.run_tool(INIT, "--name", "其他人")
-        self.assertNotEqual(second.returncode, 0)
+        self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+        self.assertIn("继续完善", second.stdout)
         self.assertEqual(profile_path.read_text(encoding="utf-8"), "我的现有档案")
+
+    def test_completed_profile_is_not_overwritten(self):
+        self.assertEqual(self.initialize().returncode, 0)
+        plan_path = self.data_dir / "CURRENT-PLAN.md"
+        plan_path.write_text("# 当前计划\n\n## 动作安排\n\n按个人条件生成。", encoding="utf-8")
+        second = self.run_tool(INIT, "--name", "其他人")
+        self.assertNotEqual(second.returncode, 0)
+        self.assertEqual(plan_path.read_text(encoding="utf-8"), "# 当前计划\n\n## 动作安排\n\n按个人条件生成。")
+
+    def test_profile_with_session_is_not_treated_as_incomplete(self):
+        self.assertEqual(self.initialize().returncode, 0)
+        sessions = self.data_dir / "sessions"
+        sessions.mkdir()
+        (sessions / "2026-09-13.json").write_text("{}", encoding="utf-8")
+        second = self.run_tool(INIT)
+        self.assertNotEqual(second.returncode, 0)
 
     def test_visualizer_prompts_when_personal_workout_is_not_initialized(self):
         page = VISUALIZER_INDEX.read_text(encoding="utf-8")
