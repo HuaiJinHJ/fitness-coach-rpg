@@ -222,6 +222,7 @@ class ProfileToolTests(unittest.TestCase):
             "workout_missing",
             "workout_not_initialized",
             "workout_malformed",
+            "workout_unassigned",
         )
         for case in cases:
             with self.subTest(case=case):
@@ -285,6 +286,15 @@ class ProfileToolTests(unittest.TestCase):
                         encoding="utf-8",
                     )
                     expected = "JSON"
+                elif case == "workout_unassigned":
+                    workout = self.visualizer_dir / "current-workout.js"
+                    workout.write_text(
+                        workout.read_text(encoding="utf-8").replace(
+                            "window.CURRENT_WORKOUT = ", ""
+                        ),
+                        encoding="utf-8",
+                    )
+                    expected = "window.CURRENT_WORKOUT"
                 result = self.run_tool(VALIDATE_ONBOARDING)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(expected, result.stdout)

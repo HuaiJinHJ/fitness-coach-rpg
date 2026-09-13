@@ -80,9 +80,15 @@ def validate_workout(errors):
         errors.append("current-workout.js 不存在")
         return
     text = path.read_text(encoding="utf-8")
-    match = re.search(r"Object\.freeze\(\s*(\{.*\})\s*\)\s*;", text, re.DOTALL)
+    match = re.search(
+        r"window\.CURRENT_WORKOUT\s*=\s*Object\.freeze\(\s*(\{.*\})\s*\)\s*;",
+        text,
+        re.DOTALL,
+    )
     if match is None:
-        errors.append("current-workout.js 必须使用 current-workout.example.js 的 JSON 格式")
+        errors.append(
+            "current-workout.js 必须把合法 JSON 赋给 window.CURRENT_WORKOUT"
+        )
         return
     try:
         workout = json.loads(match.group(1))
