@@ -12,6 +12,7 @@ INIT = ROOT / "scripts" / "init_profile.py"
 VALIDATE = ROOT / "scripts" / "validate_state.py"
 VISUALIZER_INDEX = ROOT / "extensions" / "exercise-visualizer" / "index.html"
 SKILL = ROOT / "SKILL.md"
+README = ROOT / "README.md"
 
 
 class ProfileToolTests(unittest.TestCase):
@@ -97,6 +98,12 @@ class ProfileToolTests(unittest.TestCase):
         self.assertIn("`initialized: true`", skill)
         self.assertIn("`prescription`", skill)
         self.assertIn("`exercises`", skill)
+
+    def test_readme_does_not_present_personal_plan_as_default(self):
+        readme = README.read_text(encoding="utf-8")
+        self.assertNotIn("每周完成一次即为成功，完成两次更理想", readme)
+        self.assertNotIn("教练：今天进行全身 A", readme)
+        self.assertIn("具体频率和训练结构由初始化结果决定", readme)
 
     def test_validate_accepts_complete_pure_coach_state_and_ignores_story(self):
         self.assertEqual(self.initialize().returncode, 0)
