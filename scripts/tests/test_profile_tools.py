@@ -44,6 +44,8 @@ class ProfileToolTests(unittest.TestCase):
     def test_initializes_blank_personalized_profile(self):
         result = self.initialize()
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("等待根据个人条件生成训练计划", result.stdout)
+        self.assertNotIn("直接开始训练", result.stdout)
         state = json.loads((self.data_dir / "CURRENT-STATE.json").read_text(encoding="utf-8"))
         profile = (self.data_dir / "PROFILE.md").read_text(encoding="utf-8")
         plan = (self.data_dir / "CURRENT-PLAN.md").read_text(encoding="utf-8")

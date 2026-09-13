@@ -61,7 +61,7 @@ def main():
     profile_file.write_text(text, encoding="utf-8")
 
     print(f"[OK] 已初始化 {USER_DATA}")
-    print("   编辑 PROFILE.md 和 CURRENT-STATE.json 完善档案，或直接开始训练。")
+    print("   空白档案已建立，等待根据个人条件生成训练计划。")
     return 0
 
 
