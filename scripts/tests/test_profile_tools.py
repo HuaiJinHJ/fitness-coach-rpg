@@ -37,7 +37,7 @@ class ProfileToolTests(unittest.TestCase):
     def initialize(self):
         return self.run_tool(INIT, "--name", "怀瑾")
 
-    def test_initializes_pure_coach_profile_and_sequential_plan(self):
+    def test_initializes_blank_personalized_profile(self):
         result = self.initialize()
         self.assertEqual(result.returncode, 0, result.stderr)
         state = json.loads((self.data_dir / "CURRENT-STATE.json").read_text(encoding="utf-8"))
@@ -46,9 +46,18 @@ class ProfileToolTests(unittest.TestCase):
         self.assertEqual(state["profile"], {"name": "怀瑾", "mode": "pure_coach"})
         self.assertNotIn("RPG", profile)
         self.assertNotIn("教练体系", profile)
-        self.assertIn("全身 A", plan)
-        self.assertIn("全身 B", plan)
-        self.assertIn("RIR 3-4", plan)
+        for personalized_default in (
+            "全身 A",
+            "全身 B",
+            "坐姿推胸",
+            "坐姿划船",
+            "罗马尼亚硬拉",
+            "腿举",
+        ):
+            self.assertNotIn(personalized_default, plan)
+        self.assertIn("训练目标", plan)
+        self.assertIn("每周频率", plan)
+        self.assertIn("动作安排", plan)
         self.assertFalse((self.data_dir / "story").exists())
 
     def test_theme_argument_is_not_available(self):
