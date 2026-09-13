@@ -16,8 +16,10 @@ class ProfileToolTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.data_dir = Path(self.temp.name) / "data"
+        self.visualizer_dir = Path(self.temp.name) / "visualizer"
         self.env = os.environ.copy()
         self.env["FITNESS_COACH_DATA_DIR"] = str(self.data_dir)
+        self.env["FITNESS_COACH_VISUALIZER_DIR"] = str(self.visualizer_dir)
         self.env["PYTHONIOENCODING"] = "utf-8"
 
     def tearDown(self):
@@ -63,6 +65,23 @@ class ProfileToolTests(unittest.TestCase):
     def test_theme_argument_is_not_available(self):
         result = self.run_tool(INIT, "--theme", "武侠")
         self.assertNotEqual(result.returncode, 0)
+
+    def test_initialization_creates_untracked_blank_workout_card(self):
+        result = self.initialize()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        card_path = self.visualizer_dir / "current-workout.js"
+        self.assertTrue(card_path.exists(), "初始化应生成本地 GIF 训练卡")
+        card = card_path.read_text(encoding="utf-8")
+        self.assertIn("initialized: false", card)
+        self.assertNotIn("坐姿推胸", card)
+
+    def test_existing_profile_is_not_overwritten(self):
+        self.assertEqual(self.initialize().returncode, 0)
+        profile_path = self.data_dir / "PROFILE.md"
+        profile_path.write_text("我的现有档案", encoding="utf-8")
+        second = self.run_tool(INIT, "--name", "其他人")
+        self.assertNotEqual(second.returncode, 0)
+        self.assertEqual(profile_path.read_text(encoding="utf-8"), "我的现有档案")
 
     def test_validate_accepts_complete_pure_coach_state_and_ignores_story(self):
         self.assertEqual(self.initialize().returncode, 0)

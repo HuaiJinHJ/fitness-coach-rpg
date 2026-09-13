@@ -6,6 +6,7 @@
     python scripts/init_profile.py
 """
 import argparse
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -16,6 +17,13 @@ from _common import load_json, atomic_write, resolve_user_data
 ROOT = Path(__file__).resolve().parent.parent
 STARTER = ROOT / "assets" / "starter-profile"
 USER_DATA = resolve_user_data(ROOT)
+VISUALIZER = Path(
+    os.environ.get(
+        "FITNESS_COACH_VISUALIZER_DIR",
+        ROOT / "extensions" / "exercise-visualizer",
+    )
+)
+WORKOUT_TEMPLATE = ROOT / "extensions" / "exercise-visualizer" / "current-workout.example.js"
 
 
 def main():
@@ -35,6 +43,8 @@ def main():
     if USER_DATA.exists():
         shutil.rmtree(USER_DATA)
     shutil.copytree(STARTER, USER_DATA, ignore=shutil.ignore_patterns("story"))
+    VISUALIZER.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(WORKOUT_TEMPLATE, VISUALIZER / "current-workout.js")
 
     # 填初始值
     state_file = USER_DATA / "CURRENT-STATE.json"
