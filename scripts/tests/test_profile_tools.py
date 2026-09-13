@@ -43,6 +43,65 @@ class ProfileToolTests(unittest.TestCase):
     def initialize(self):
         return self.run_tool(INIT, "--name", "怀瑾")
 
+    def write_completed_onboarding(self):
+        if not self.data_dir.exists():
+            result = self.initialize()
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        (self.data_dir / "PROFILE.md").write_text(
+            """# 个人档案 PROFILE
+
+- **姓名**：`测试用户`
+- **基础数据**：`未提供`
+- **目标**：`提升基础力量`
+- **训练水平**：`新手`
+- **设备**：`商业健身房`
+- **现实频率**：`每周 2 次`
+- **可用时长**：`每次 45 分钟`
+- **教练模式**：纯教练模式
+- **伤病或动作限制**：`无`
+""",
+            encoding="utf-8",
+        )
+        (self.data_dir / "CURRENT-PLAN.md").write_text(
+            """# 当前计划 CURRENT-PLAN
+
+## 计划依据
+
+- 目标：提升基础力量
+- 每周频率：2 次
+
+## 当前阶段
+
+- 建立动作基线
+
+## 动作安排
+
+训练日一：器械推胸，2 组，每组 8-12 次，RPE 6-7。
+
+## 调整与安全边界
+
+保持无痛和动作可控。
+""",
+            encoding="utf-8",
+        )
+        self.visualizer_dir.mkdir(parents=True, exist_ok=True)
+        (self.visualizer_dir / "current-workout.js").write_text(
+            """(function () {
+  window.CURRENT_WORKOUT = {
+    schemaVersion: "1.0",
+    initialized: true,
+    planLabel: "下一次",
+    name: "训练日一",
+    status: "可以开始",
+    prescription: { sets: 2, reps: "8-12", rpe: "6-7" },
+    notes: ["保持动作可控"],
+    exercises: [{ name: "器械推胸", order: 1 }]
+  };
+})();
+""",
+            encoding="utf-8",
+        )
+
     def test_initializes_blank_personalized_profile(self):
         result = self.initialize()
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -116,12 +175,57 @@ class ProfileToolTests(unittest.TestCase):
         self.assertIn("`initialized: true`", skill)
         self.assertIn("`prescription`", skill)
         self.assertIn("`exercises`", skill)
+        self.assertIn("python scripts/validate_onboarding.py", skill)
 
     def test_readme_does_not_present_personal_plan_as_default(self):
         readme = README.read_text(encoding="utf-8")
         self.assertNotIn("每周完成一次即为成功，完成两次更理想", readme)
         self.assertNotIn("教练：今天进行全身 A", readme)
         self.assertIn("具体频率和训练结构由初始化结果决定", readme)
+
+    def test_onboarding_validator_accepts_completed_personalization(self):
+        self.write_completed_onboarding()
+        result = self.run_tool(VALIDATE_ONBOARDING)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("初始化内容完整", result.stdout)
+
+    def test_onboarding_validator_rejects_each_incomplete_artifact(self):
+        cases = (
+            "profile_placeholders",
+            "plan_placeholders",
+            "workout_missing",
+            "workout_not_initialized",
+        )
+        for case in cases:
+            with self.subTest(case=case):
+                self.write_completed_onboarding()
+                if case == "profile_placeholders":
+                    (self.data_dir / "PROFILE.md").write_text(
+                        (ROOT / "assets" / "starter-profile" / "PROFILE.md").read_text(encoding="utf-8"),
+                        encoding="utf-8",
+                    )
+                    expected = "PROFILE.md"
+                elif case == "plan_placeholders":
+                    (self.data_dir / "CURRENT-PLAN.md").write_text(
+                        (ROOT / "assets" / "starter-profile" / "CURRENT-PLAN.md").read_text(encoding="utf-8"),
+                        encoding="utf-8",
+                    )
+                    expected = "CURRENT-PLAN.md"
+                elif case == "workout_missing":
+                    (self.visualizer_dir / "current-workout.js").unlink()
+                    expected = "current-workout.js"
+                else:
+                    workout = self.visualizer_dir / "current-workout.js"
+                    workout.write_text(
+                        workout.read_text(encoding="utf-8").replace(
+                            "initialized: true", "initialized: false"
+                        ),
+                        encoding="utf-8",
+                    )
+                    expected = "initialized: true"
+                result = self.run_tool(VALIDATE_ONBOARDING)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected, result.stdout)
 
     def test_validate_accepts_complete_pure_coach_state_and_ignores_story(self):
         self.assertEqual(self.initialize().returncode, 0)

@@ -32,7 +32,8 @@ description: 本地文件驱动的纯健身教练。用于开始训练、生成�
 3. 根据目标、经验、器械、频率、时长和动作限制生成 `user-data/CURRENT-PLAN.md`；
 4. 生成 `extensions/exercise-visualizer/current-workout.js`，格式参考 `current-workout.example.js`；把 `initialized` 设置为 `initialized: true`，填写 `planLabel`、`name`、`status`、`prescription`、`notes` 和 `exercises`，且只列入当前计划中已确认的动作；
 5. 运行 `python scripts/validate_state.py`；
-6. 校验通过后说明已保存的条件、计划结构和“今天练”的下一步用法。
+6. 运行 `python scripts/validate_onboarding.py`，确认档案、个人计划和 GIF 训练卡均已完成；
+7. 两项校验都通过后，说明已保存的条件、计划结构和“今天练”的下一步用法。任何一项失败时先修正，不把半完成状态称为初始化成功。
 
 训练结构必须来自本次用户条件。全身 A/B 只是可能方案，不能视为所有用户的默认方案。没有可靠 GIF 映射的动作保留文字卡，不使用近似动作冒充。
 

@@ -97,6 +97,7 @@ AI 会将已知信息整理为结构化记录。没有提供的字段保持为�
 
 ```text
 python scripts/init_profile.py --name 你的名字
+python scripts/validate_onboarding.py
 python scripts/append_session.py --file session.json
 python scripts/update_summary.py
 python scripts/validate_state.py
