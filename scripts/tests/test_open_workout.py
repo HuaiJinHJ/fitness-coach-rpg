@@ -27,19 +27,21 @@ class OpenWorkoutTests(unittest.TestCase):
 
     def test_main_uses_default_browser_only_after_validation(self):
         module = load_module()
-        with mock.patch.object(module, "validate_active_workout", return_value="session-123"), \
+        with mock.patch.object(module, "validate_active_workout", return_value="session-123") as validator, \
              mock.patch.object(module.webbrowser, "open", return_value=True) as browser:
-            result = module.main()
+            result = module.main(["--session-id", "session-123"])
         self.assertEqual(result, 0)
+        validator.assert_called_once_with("session-123")
         browser.assert_called_once()
         self.assertEqual(browser.call_args.kwargs["new"], 2)
 
     def test_main_does_not_open_browser_when_validation_fails(self):
         module = load_module()
-        with mock.patch.object(module, "validate_active_workout", side_effect=ValueError("bad workout")), \
+        with mock.patch.object(module, "validate_active_workout", side_effect=ValueError("bad workout")) as validator, \
              mock.patch.object(module.webbrowser, "open") as browser:
-            result = module.main()
+            result = module.main(["--session-id", "expected-new-session"])
         self.assertEqual(result, 1)
+        validator.assert_called_once_with("expected-new-session")
         browser.assert_not_called()
 
 

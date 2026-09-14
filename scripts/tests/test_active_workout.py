@@ -32,9 +32,13 @@ class ActiveWorkoutTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
-    def run_validator(self):
+    def run_validator(self, session_id=None):
+        if session_id is None:
+            session_id = self.expected_session_id
+        command = [sys.executable, str(VALIDATE_WORKOUT)]
+        command.extend(["--session-id", session_id])
         return subprocess.run(
-            [sys.executable, str(VALIDATE_WORKOUT)],
+            command,
             cwd=ROOT,
             env=self.env,
             text=True,
@@ -44,6 +48,7 @@ class ActiveWorkoutTests(unittest.TestCase):
         )
 
     def write_workout(self, payload):
+        self.expected_session_id = payload.get("sessionId", "expected-session")
         (self.visualizer_dir / "current-workout.js").write_text(
             render_workout(payload), encoding="utf-8"
         )
@@ -101,6 +106,14 @@ class ActiveWorkoutTests(unittest.TestCase):
         result = self.run_validator()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("generatedAt 必须是今天", result.stdout)
+
+    def test_rejects_same_day_workout_with_unexpected_session_id(self):
+        payload = self.valid_payload()
+        payload["sessionId"] = "same-day-old-session"
+        self.write_workout(payload)
+        result = self.run_validator("expected-new-session")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("sessionId 与本次训练不匹配", result.stdout)
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 
 - 面向用户使用简体中文，先给当天行动，再给必要理由。
 - 处理健身请求前完整读取仓库根目录的 `SKILL.md`；先判断 `user-data/` 是否已初始化，再按 Skill 进入初始化、规划或日常教练流程。
-- “开始训练 / 今天练”等请求进入 Active Workout 流程：读取长期文件，生成本次训练，运行 `python scripts/validate_workout.py`，再运行 `python scripts/open_workout.py`。
+- “开始训练 / 今天练”等请求进入 Active Workout 流程：读取长期文件，生成本次训练，运行 `python scripts/validate_workout.py --session-id <本次 sessionId>`，再运行 `python scripts/open_workout.py --session-id <本次 sessionId>`。
 - 默认不执行固定训练前三问；只在用户主动报告异常且信息不足以改变处方时补问最少必要信息。用户已经提供的状态信息不得重复追问。
 - 训练页必须由系统默认浏览器打开；不要用 Codex 编辑器打开 `index.html` 代替训练页面。
 - 只有在已初始化时，制定或调整训练前才读取 `user-data/PROFILE.md`、`user-data/CURRENT-STATE.json`、`user-data/CURRENT-PLAN.md` 和相关近期训练记录。

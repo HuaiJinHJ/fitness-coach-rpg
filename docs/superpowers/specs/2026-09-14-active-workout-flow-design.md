@@ -181,6 +181,7 @@ scripts/open_workout.py
 
 - 找到 `extensions/exercise-visualizer/index.html`；
 - 使用 Python 标准库调用系统默认浏览器打开页面；
+- 接收本次生成的预期 `sessionId`，校验训练卡中的 `sessionId` 完全一致；
 - 通过 query 参数附加当前 session 标识，降低浏览器复用旧页面或缓存内容导致误判的风险；
 - 找不到页面时返回明确错误码和提示。
 

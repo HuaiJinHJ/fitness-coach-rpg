@@ -77,8 +77,8 @@ AI 会将已知信息整理为结构化记录。没有提供的字段保持为�
 1. 读取长期计划和历史表现；
 2. 如有必要，根据你主动报告的当天状态调整本次处方；
 3. 生成 `current-workout.js`；
-4. 运行 `python scripts/validate_workout.py` 校验本次训练；
-5. 运行 `python scripts/open_workout.py`，用系统默认浏览器打开训练页。
+4. 运行 `python scripts/validate_workout.py --session-id <本次 sessionId>` 校验本次训练；
+5. 运行 `python scripts/open_workout.py --session-id <本次 sessionId>`，用系统默认浏览器打开训练页。
 
 临时降组数、降强度或替换动作默认只作用于本次 Active Workout，不修改长期计划。
 
@@ -125,8 +125,8 @@ AI 会将已知信息整理为结构化记录。没有提供的字段保持为�
 ```text
 python scripts/init_profile.py --name 你的名字
 python scripts/validate_onboarding.py
-python scripts/validate_workout.py
-python scripts/open_workout.py
+python scripts/validate_workout.py --session-id <本次 sessionId>
+python scripts/open_workout.py --session-id <本次 sessionId>
 python scripts/append_session.py --file session.json
 python scripts/update_summary.py
 python scripts/validate_state.py

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Validate the generated Active Workout card before it is opened."""
+import argparse
 import json
 import os
 import re
@@ -31,7 +32,7 @@ def load_workout(path):
         raise ValueError(f"current-workout.js 的 JSON 格式错误: {error.msg}")
 
 
-def validate_workout(workout):
+def validate_workout(workout, expected_session_id):
     errors = []
     if workout.get("schemaVersion") != "2.0":
         errors.append("schemaVersion 必须为 2.0")
@@ -41,6 +42,9 @@ def validate_workout(workout):
     for key in ("sessionId", "generatedAt", "planLabel", "name", "status"):
         if not isinstance(workout.get(key), str) or not workout[key].strip():
             errors.append(f"{key} 不能为空")
+
+    if workout.get("sessionId") != expected_session_id:
+        errors.append("sessionId 与本次训练不匹配")
 
     generated_at = workout.get("generatedAt")
     if isinstance(generated_at, str) and generated_at.strip():
@@ -101,7 +105,14 @@ def validate_workout(workout):
     return errors
 
 
-def main():
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="校验本次 Active Workout")
+    parser.add_argument("--session-id", required=True, help="本次生成的 sessionId")
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
     path = VISUALIZER / "current-workout.js"
     if not path.exists():
         print("[ERROR] current-workout.js 不存在")
@@ -113,7 +124,7 @@ def main():
         print(f"[ERROR] {error}")
         return 1
 
-    errors = validate_workout(workout)
+    errors = validate_workout(workout, expected_session_id=args.session_id)
     if errors:
         for error in errors:
             print(f"[ERROR] {error}")

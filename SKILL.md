@@ -97,9 +97,9 @@ description: 本地文件驱动的纯健身教练。用于开始训练、生成�
 
 生成 Active Workout 后：
 
-1. 运行 `python scripts/validate_workout.py`；
+1. 运行 `python scripts/validate_workout.py --session-id <本次 sessionId>`；
 2. 校验失败时先修正，禁止打开旧训练卡冒充今天的训练；
-3. 校验通过后运行 `python scripts/open_workout.py`；
+3. 校验通过后运行 `python scripts/open_workout.py --session-id <本次 sessionId>`；
 4. 训练页必须交给系统默认浏览器打开，不要用 Codex 编辑器打开 `index.html` 代替训练页面；
 5. 浏览器打开后，聊天不重复输出完整训练处方，只简短说明今天训练名称，以及器械占用、重量不合适、动作不熟、异常疲劳或疼痛时再回来反馈。
 

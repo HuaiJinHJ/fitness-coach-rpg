@@ -184,6 +184,8 @@ class ProfileToolTests(unittest.TestCase):
         self.assertIn("独立 `prescription`", skill)
         self.assertIn("python scripts/validate_workout.py", skill)
         self.assertIn("python scripts/open_workout.py", skill)
+        self.assertIn("python scripts/validate_workout.py --session-id <本次 sessionId>", skill)
+        self.assertIn("python scripts/open_workout.py --session-id <本次 sessionId>", skill)
         self.assertIn("聊天不重复输出完整训练处方", skill)
 
     def test_skill_does_not_force_fixed_preworkout_questionnaire(self):

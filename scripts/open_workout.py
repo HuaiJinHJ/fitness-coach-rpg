@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Open the validated Active Workout in the operating system's default browser."""
+import argparse
 import os
 import sys
 import webbrowser
@@ -18,12 +19,12 @@ VISUALIZER = Path(
 )
 
 
-def validate_active_workout():
+def validate_active_workout(expected_session_id):
     workout_path = VISUALIZER / "current-workout.js"
     if not workout_path.exists():
         raise ValueError("current-workout.js 不存在")
     workout = load_workout(workout_path)
-    errors = validate_workout(workout)
+    errors = validate_workout(workout, expected_session_id=expected_session_id)
     if errors:
         raise ValueError("；".join(errors))
     return workout["sessionId"]
@@ -33,14 +34,21 @@ def build_workout_url(index_path, session_id):
     return index_path.resolve().as_uri() + "?" + urlencode({"session": session_id})
 
 
-def main():
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="用默认浏览器打开本次 Active Workout")
+    parser.add_argument("--session-id", required=True, help="本次生成的 sessionId")
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
     index_path = VISUALIZER / "index.html"
     if not index_path.exists():
         print("[ERROR] 训练页 index.html 不存在")
         return 1
 
     try:
-        session_id = validate_active_workout()
+        session_id = validate_active_workout(args.session_id)
     except ValueError as error:
         print(f"[ERROR] {error}")
         return 1

@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-14-active-workout-flow-design.md`
 
+> **Post-review correction:** The final validator and launcher require `--session-id <本次 sessionId>`. This expected ID must match the generated card, preventing a same-day previous session from being opened when a new card was not successfully written. Earlier illustrative code blocks in this implementation record are superseded by that invariant.
+
 ## Global Constraints
 
 - Keep the project local-file driven; do not add a server, database, npm build, or third-party Python dependency.
@@ -800,7 +802,7 @@ If no file change was needed, do not create an empty commit.
 - [ ] `今天特别累` may trigger only the minimum clarifying information needed for a safe adjustment.
 - [ ] The long-term plan remains in `CURRENT-PLAN.md`; temporary session changes do not mutate it.
 - [ ] `current-workout.js` schema `2.0` describes one Active Workout with per-exercise prescriptions.
-- [ ] Invalid or stale Active Workout data prevents browser opening rather than silently showing an old card.
+- [ ] Invalid or stale Active Workout data, including a same-day session ID mismatch, prevents browser opening rather than silently showing an old card.
 - [ ] The training page renders the final per-exercise prescription and GIF/text fallback in one place.
 - [ ] `open_workout.py` opens the training page through the OS default browser with a session query parameter.
 - [ ] Chat does not duplicate the full workout after the browser page opens.
