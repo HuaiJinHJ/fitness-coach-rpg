@@ -223,6 +223,39 @@ class ProfileToolTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("初始化内容完整", result.stdout)
 
+    def test_onboarding_validator_accepts_existing_semantic_labels(self):
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        (self.data_dir / "PROFILE.md").write_text(
+            """# 个人档案 PROFILE
+
+- **目标**：塑形 / 体态重组
+- **训练水平**：器械训练新手
+- **设备**：商业健身房全器械
+- **现实频率**：每周稳定 `1-2` 次；早晨可支配 `40-60` 分钟
+- **伤病史**：膝盖目前无痛；训练中以无痛和动作可控为边界
+""",
+            encoding="utf-8",
+        )
+        (self.data_dir / "CURRENT-PLAN.md").write_text(
+            """# 本周计划 CURRENT-PLAN
+
+## 本阶段安排
+
+每周完成 1-2 次，每次 40-60 分钟。
+
+| 顺序 | 类型 | 内容 |
+|:---|:---|:---|
+| 下一次 | 全身 A | 每项 2 组，8-12 次，RPE 6-7 |
+
+## 本阶段重点
+
+- 出现疼痛就停止对应动作并记录。
+""",
+            encoding="utf-8",
+        )
+        result = self.run_tool(VALIDATE_ONBOARDING)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_onboarding_validator_rejects_each_incomplete_artifact(self):
         cases = (
             "profile_placeholders",
