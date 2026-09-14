@@ -2,17 +2,24 @@
 
 这是一个本地文件驱动的长期健身教练工作区，基于开源项目 Fitness Coach RPG 简化而来。当前只保留训练计划、训练记录、恢复判断和动态调整，不启用 RPG 或具名教练模仿。
 
-它不是需要部署的应用，也不需要注册平台。训练事实保存在本地 JSON 和 Markdown 文件中，AI 负责读取这些事实、给出当天计划并解释调整依据。
+它不是需要部署的应用，也不需要注册平台。训练事实保存在本地 JSON 和 Markdown 文件中，AI 负责读取这些事实、生成本次训练并解释调整依据。
 
 ## 第一次使用
 
 1. Fork 或下载本仓库；
-2. 在支持项目文件操作的 AI 工具中打开仓库目录；
+2. 在支持项目文件操作的 AI 工具中，把 `fitness-coach-rpg` 本身作为项目根目录打开；
 3. 对 AI 说：`初始化健身教练`；
 4. 回答目标、经验、器械、频率、时长和动作限制；
-5. 初始化完成后说：`今天练`。
+5. 初始化完成后说：`开始训练`。
 
-仓库不附带作者的个人训练计划。AI 会为当前用户生成本地计划，`user-data/` 和当前 GIF 训练卡均不会提交到 Git。
+仓库不附带作者的个人训练计划。个人档案、训练记录和当前 Active Workout 均不会提交到 Git。
+
+## 两类对话
+
+- **规划对话**：调整目标、频率、动作和阶段计划，最终把决定写回 `user-data/PROFILE.md`、`user-data/CURRENT-PLAN.md` 等长期文件。
+- **训练对话**：每次都可以新建。输入 `开始训练`，AI 会从项目文件恢复状态，生成今天这一场 Active Workout，并在系统默认浏览器打开训练页。
+
+项目文件是长期存档，对话只是操作入口；不需要维护一个永远续聊的训练线程。
 
 ## 当前目标
 
@@ -26,22 +33,28 @@
 
 ## 日常使用
 
-在这个项目中直接对 AI 说：
+正常情况下，在项目中直接对 AI 说：
 
 ```text
-今天练。
+开始训练
 ```
 
-教练会先读取个人档案、当前状态和计划，只补问睡眠、精神状态、异常酸痛或疼痛，然后一次性给出完整计划。
+AI 会读取个人档案、当前状态、长期计划和必要的历史摘要，生成今天这一场 Active Workout。默认不会固定询问睡眠、精神状态和疼痛；只有用户主动报告异常、但信息不足以安全调整时，才补问最少必要信息。
 
-推荐交互：
+正常交互示例：
 
 ```text
-用户：今天练。
-教练：先告诉我昨晚睡眠、现在精神状态，以及是否有异常酸痛或疼痛。
-用户：睡了 7 小时，精神 7/10，没有疼痛。
-教练：今天继续你的个人计划。以下是完整安排；训练中只有器械占用、重量不合适或不适时再告诉我。
+用户：开始训练。
+教练：今天是全身 A，训练页已在默认浏览器打开。正常训练不用回这里；器械占用、重量不合适或身体不适时再告诉我。
 ```
+
+如果你已经知道今天状态不同，可以直接一次说完：
+
+```text
+开始训练，昨晚 6.5 小时，精神一般，无痛。
+```
+
+AI 会直接把这些信息纳入本次训练，不重复追问。
 
 训练中正常执行即可。遇到器械占用、重量不合适、动作不熟、异常疲劳或疼痛时，再随时反馈。
 
@@ -55,17 +68,30 @@
 
 AI 会将已知信息整理为结构化记录。没有提供的字段保持为空，不会被编造。
 
-## 动作 GIF 可视化
+## Active Workout 与动作可视化
 
-`extensions/exercise-visualizer/` 是独立展示层。完成初始化后，双击其中的 `index.html`，即可查看从个人计划派生的训练卡和动作 GIF，无需服务器、数据库、npm 或额外运行环境。
+`user-data/CURRENT-PLAN.md` 保存长期训练模板；`extensions/exercise-visualizer/current-workout.js` 保存“今天这一场”的 Active Workout 快照。两者不是同一个对象。
 
-- `exercise-map.js`：只保存当前使用动作与 ExerciseGymGifsDB canonical ID 的映射；
-- `current-workout.example.js`：公开的空白格式示例；初始化后会在本地生成被 Git 忽略的 `current-workout.js`；
-- `index.html`：加载本地数据，并从固定版本 `v1.1.0` 获取 GIF、主要肌群、器械和动作说明。
+当你说 `开始训练` 后，AI 会：
 
-网络或 CDN 不可用时，页面自动保留文字训练卡。训练计划变化后，需要同步更新本地 `current-workout.js`；删除整个扩展不会影响教练、训练计划或历史记录。
+1. 读取长期计划和历史表现；
+2. 如有必要，根据你主动报告的当天状态调整本次处方；
+3. 生成 `current-workout.js`；
+4. 运行 `python scripts/validate_workout.py` 校验本次训练；
+5. 运行 `python scripts/open_workout.py`，用系统默认浏览器打开训练页。
 
-需要为自己的计划增加或替换动作时，请看 [`references/exercise-gif-customization.md`](references/exercise-gif-customization.md)。其中包含素材仓库、固定版本接口、动作 ID 查找、中文映射和验证方法。
+临时降组数、降强度或替换动作默认只作用于本次 Active Workout，不修改长期计划。
+
+`extensions/exercise-visualizer/` 是训练执行展示层：
+
+- `exercise-map.js`：保存当前动作与 ExerciseGymGifsDB canonical ID 的映射；
+- `current-workout.example.js`：公开的空白格式示例；真正的 `current-workout.js` 由 AI 在每次开始训练时生成并被 Git 忽略；
+- `index.html`：展示本次训练处方，并从固定版本 `v1.1.0` 获取 GIF、主要肌群、器械和动作说明；
+- `scripts/open_workout.py`：交给操作系统默认浏览器打开训练页，而不是让 Codex 把 HTML 当源码打开。
+
+网络或 CDN 不可用时，页面自动保留文字训练卡。没有可靠 GIF 映射的动作也会保留完整文字处方，不使用近似动作冒充。
+
+需要增加或替换动作时，请看 [`references/exercise-gif-customization.md`](references/exercise-gif-customization.md)。
 
 ## 动态调整
 
@@ -83,13 +109,14 @@ AI 会将已知信息整理为结构化记录。没有提供的字段保持为�
 ## 数据文件
 
 - `user-data/PROFILE.md`：长期稳定的个人资料；
-- `user-data/CURRENT-PLAN.md`：当前训练顺序和阶段规则；
+- `user-data/CURRENT-PLAN.md`：当前阶段长期训练结构和衔接规则；
 - `user-data/CURRENT-STATE.json`：恢复状态、近期可比表现和下一次建议；
 - `user-data/sessions/YYYY-MM-DD.json`：逐次训练事实，只追加不覆盖；
+- `extensions/exercise-visualizer/current-workout.js`：当前 Active Workout 快照；
 - `SKILL.md`：教练行为说明；
 - `AGENTS.md`：确保新任务自动进入纯教练流程。
 
-持久连续性来自这些本地文件，而不是聊天窗口本身。`user-data/` 已被 Git 忽略，个人训练数据不会随代码提交。
+持久连续性来自这些本地文件，而不是聊天窗口本身。`user-data/` 和当前训练卡均被 Git 忽略。
 
 ## 脚本
 
@@ -98,6 +125,8 @@ AI 会将已知信息整理为结构化记录。没有提供的字段保持为�
 ```text
 python scripts/init_profile.py --name 你的名字
 python scripts/validate_onboarding.py
+python scripts/validate_workout.py
+python scripts/open_workout.py
 python scripts/append_session.py --file session.json
 python scripts/update_summary.py
 python scripts/validate_state.py
