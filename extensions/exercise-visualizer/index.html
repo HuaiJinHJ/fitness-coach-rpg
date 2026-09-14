@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>下一次训练 · 动作可视化</title>
+  <title>本次训练 · Active Workout</title>
   <style>
     :root {
       --ink: #182018;
@@ -19,7 +19,6 @@
     }
 
     * { box-sizing: border-box; }
-
     html { scroll-behavior: smooth; }
 
     body {
@@ -207,7 +206,7 @@
 
     .prescription {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 10px;
       margin: 0 0 16px;
     }
@@ -255,7 +254,8 @@
       font-size: 0.92rem;
     }
 
-    .instructions-block ol {
+    .instructions-block ol,
+    .instructions-block ul {
       margin: 0;
       padding-left: 20px;
     }
@@ -328,6 +328,7 @@
       .section-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
       .media { min-height: 230px; }
       .session-notes ul { grid-template-columns: 1fr; }
+      .prescription { grid-template-columns: 1fr; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -339,26 +340,26 @@
 <body>
   <main class="shell">
     <header class="hero" aria-labelledby="workout-title">
-      <p class="eyebrow" id="plan-label">下一次训练</p>
-      <h1 id="workout-title">正在读取计划…</h1>
+      <p class="eyebrow" id="plan-label">本次训练</p>
+      <h1 id="workout-title">正在读取训练…</h1>
       <p class="hero-summary" id="workout-summary" aria-label="训练概要"></p>
     </header>
 
     <section aria-labelledby="exercise-heading">
       <div class="section-heading">
         <h2 id="exercise-heading">今日动作</h2>
-        <p id="load-status" role="status" aria-live="polite">正在读取本地训练数据</p>
+        <p id="load-status" role="status" aria-live="polite">正在读取本次训练</p>
       </div>
       <div class="exercise-grid" id="exercise-grid"></div>
     </section>
 
     <aside class="session-notes" aria-labelledby="notes-heading">
-      <h2 id="notes-heading">开始前记住</h2>
+      <h2 id="notes-heading">本次训练提示</h2>
       <ul id="session-notes"></ul>
     </aside>
 
     <footer class="footer">
-      训练计划来自 Fitness Coach；GIF 由 ExerciseGymGifsDB v1.1.0 提供。定制说明：references/exercise-gif-customization.md
+      本次处方来自 Fitness Coach Active Workout；GIF 由 ExerciseGymGifsDB v1.1.0 提供。定制说明：references/exercise-gif-customization.md
     </footer>
   </main>
 
@@ -380,23 +381,23 @@
       }
 
       if (!workout || workout.initialized === false || !Array.isArray(workout.exercises) || workout.exercises.length === 0) {
-        grid.innerHTML = '<p class="fatal">尚未生成个人训练卡。请先在项目中对 AI 说“初始化健身教练”。初始化会在本文件夹生成本地 current-workout.js。</p>';
-        status.textContent = "等待初始化";
-        document.getElementById("plan-label").textContent = "第一次使用";
-        document.getElementById("workout-title").textContent = "请先初始化健身教练";
-        document.title = "请先初始化健身教练 · 动作可视化";
+        grid.innerHTML = '<p class="fatal">尚未生成本次训练。若个人档案尚未初始化，请先初始化健身教练；否则回到项目对话输入“开始训练”。</p>';
+        status.textContent = "等待生成本次训练";
+        document.getElementById("plan-label").textContent = "Active Workout";
+        document.getElementById("workout-title").textContent = "请先生成本次训练";
+        document.title = "请先生成本次训练 · Fitness Coach";
         return;
       }
 
-      document.getElementById("plan-label").textContent = workout.planLabel + "训练";
+      document.getElementById("plan-label").textContent = workout.planLabel;
       document.getElementById("workout-title").textContent = workout.name;
-      document.title = workout.planLabel + "：" + workout.name + " · 动作可视化";
+      document.title = workout.planLabel + "：" + workout.name + " · Active Workout";
 
       const summary = document.getElementById("workout-summary");
       [
         workout.exercises.length + " 个动作",
-        workout.prescription.sets + " 组 × " + workout.prescription.reps + " 次",
-        "目标 RPE " + workout.prescription.rpe
+        workout.status,
+        "Session " + workout.sessionId
       ].forEach(function (text) {
         const badge = document.createElement("span");
         badge.textContent = text;
@@ -404,7 +405,7 @@
       });
 
       const notes = document.getElementById("session-notes");
-      workout.notes.forEach(function (note) {
+      (Array.isArray(workout.notes) ? workout.notes : []).forEach(function (note) {
         const item = document.createElement("li");
         item.textContent = note;
         notes.appendChild(item);
@@ -501,9 +502,9 @@
 
         if (instructionsZh.length > 0 && instructionsEn.length > 0) {
           const details = document.createElement("details");
-          const summary = document.createElement("summary");
-          summary.textContent = "查看原始英文说明";
-          details.appendChild(summary);
+          const remoteSummary = document.createElement("summary");
+          remoteSummary.textContent = "查看原始英文说明";
+          details.appendChild(remoteSummary);
           appendSteps(details, instructionsEn);
           body.appendChild(details);
         }
@@ -585,12 +586,31 @@
           title.className = "card-title";
           title.textContent = exercise.name;
 
-          const prescription = document.createElement("dl");
-          prescription.className = "prescription";
-          addMetric(prescription, "组数 × 次数", workout.prescription.sets + " × " + workout.prescription.reps);
-          addMetric(prescription, "目标强度", "RPE " + workout.prescription.rpe);
+          const metrics = document.createElement("dl");
+          metrics.className = "prescription";
+          const prescription = exercise.prescription;
+          addMetric(metrics, "正式组", exercise.prescription.sets);
+          addMetric(metrics, "次数", exercise.prescription.reps);
+          addMetric(metrics, "目标 RPE", exercise.prescription.rpe);
 
-          body.append(kicker, title, prescription);
+          body.append(kicker, title, metrics);
+
+          if (Array.isArray(exercise.notes) && exercise.notes.length) {
+            const block = document.createElement("div");
+            block.className = "instructions-block";
+            const heading = document.createElement("h3");
+            heading.textContent = "本次提示";
+            block.appendChild(heading);
+            const list = document.createElement("ul");
+            exercise.notes.forEach(function (note) {
+              const item = document.createElement("li");
+              item.textContent = note;
+              list.appendChild(item);
+            });
+            block.appendChild(list);
+            body.appendChild(block);
+          }
+
           card.append(media, body);
           grid.appendChild(card);
 
@@ -603,7 +623,7 @@
         const mapping = map.exercises[exercise.name];
         return mapping && mapping.status === "resolved";
       }).length;
-      status.textContent = resolvedOnPage + " 个 GIF 已匹配，其余动作待确认";
+      status.textContent = resolvedOnPage + " 个 GIF 已匹配，其余动作保留文字处方";
     })();
   </script>
 </body>

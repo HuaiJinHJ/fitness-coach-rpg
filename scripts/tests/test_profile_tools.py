@@ -84,23 +84,6 @@ class ProfileToolTests(unittest.TestCase):
 """,
             encoding="utf-8",
         )
-        self.visualizer_dir.mkdir(parents=True, exist_ok=True)
-        (self.visualizer_dir / "current-workout.js").write_text(
-            """(function () {
-  window.CURRENT_WORKOUT = Object.freeze({
-    "schemaVersion": "1.0",
-    "initialized": true,
-    "planLabel": "下一次",
-    "name": "训练日一",
-    "status": "可以开始",
-    "prescription": { "sets": 2, "reps": "8-12", "rpe": "6-7" },
-    "notes": ["保持动作可控"],
-    "exercises": [{ "name": "器械推胸", "order": 1 }]
-  });
-})();
-""",
-            encoding="utf-8",
-        )
 
     def test_initializes_blank_personalized_profile(self):
         result = self.initialize()
@@ -135,7 +118,7 @@ class ProfileToolTests(unittest.TestCase):
         result = self.initialize()
         self.assertEqual(result.returncode, 0, result.stderr)
         card_path = self.visualizer_dir / "current-workout.js"
-        self.assertTrue(card_path.exists(), "初始化应生成本地 GIF 训练卡")
+        self.assertTrue(card_path.exists(), "初始化应生成本地空白训练卡")
         card = card_path.read_text(encoding="utf-8")
         self.assertIn('"initialized": false', card)
         self.assertNotIn("坐姿推胸", card)
@@ -188,18 +171,40 @@ class ProfileToolTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(profile_path.read_text(encoding="utf-8"), "必须保留的现有档案")
 
-    def test_visualizer_prompts_when_personal_workout_is_not_initialized(self):
+    def test_visualizer_prompts_to_generate_active_workout(self):
         page = VISUALIZER_INDEX.read_text(encoding="utf-8")
         self.assertIn("workout.initialized === false", page)
-        self.assertIn("请先在项目中对 AI 说“初始化健身教练”", page)
+        self.assertIn("回到项目对话输入“开始训练”", page)
+        self.assertIn("请先生成本次训练", page)
 
-    def test_skill_marks_generated_workout_card_as_initialized(self):
+    def test_skill_defines_active_workout_lifecycle(self):
         skill = SKILL.read_text(encoding="utf-8")
-        self.assertIn('`"initialized": true`', skill)
-        self.assertIn("`prescription`", skill)
-        self.assertIn("`exercises`", skill)
-        self.assertIn("合法 JSON", skill)
-        self.assertIn("python scripts/validate_onboarding.py", skill)
+        self.assertIn("Active Workout", skill)
+        self.assertIn('schemaVersion: "2.0"', skill)
+        self.assertIn("独立 `prescription`", skill)
+        self.assertIn("python scripts/validate_workout.py", skill)
+        self.assertIn("python scripts/open_workout.py", skill)
+        self.assertIn("python scripts/validate_workout.py --session-id <本次 sessionId>", skill)
+        self.assertIn("python scripts/open_workout.py --session-id <本次 sessionId>", skill)
+        self.assertIn("聊天不重复输出完整训练处方", skill)
+
+    def test_skill_does_not_force_fixed_preworkout_questionnaire(self):
+        skill = SKILL.read_text(encoding="utf-8")
+        self.assertIn("默认不固定询问睡眠、精神状态和疼痛", skill)
+        self.assertIn("用户已主动提供的信息不得重复追问", skill)
+
+    def test_visualizer_renders_per_exercise_prescription(self):
+        page = VISUALIZER_INDEX.read_text(encoding="utf-8")
+        self.assertIn("exercise.prescription", page)
+        self.assertIn('addMetric(metrics, "正式组", exercise.prescription.sets)', page)
+        self.assertIn('addMetric(metrics, "次数", exercise.prescription.reps)', page)
+        self.assertIn('addMetric(metrics, "目标 RPE", exercise.prescription.rpe)', page)
+        self.assertNotIn("workout.prescription.sets", page)
+
+    def test_visualizer_identifies_active_session(self):
+        page = VISUALIZER_INDEX.read_text(encoding="utf-8")
+        self.assertIn("workout.sessionId", page)
+        self.assertIn("workout.status", page)
 
     def test_readme_does_not_present_personal_plan_as_default(self):
         readme = README.read_text(encoding="utf-8")
@@ -207,11 +212,51 @@ class ProfileToolTests(unittest.TestCase):
         self.assertNotIn("教练：今天进行全身 A", readme)
         self.assertIn("具体频率和训练结构由初始化结果决定", readme)
 
+    def test_readme_explains_planning_and_training_conversations(self):
+        readme = README.read_text(encoding="utf-8")
+        self.assertIn("规划对话", readme)
+        self.assertIn("训练对话", readme)
+        self.assertIn("开始训练", readme)
+        self.assertIn("默认浏览器", readme)
+
     def test_onboarding_validator_accepts_completed_personalization(self):
         self.write_completed_onboarding()
         result = self.run_tool(VALIDATE_ONBOARDING)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("初始化内容完整", result.stdout)
+
+    def test_onboarding_validator_accepts_existing_semantic_labels(self):
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        (self.data_dir / "PROFILE.md").write_text(
+            """# 个人档案 PROFILE
+
+- **目标**：塑形 / 体态重组
+- **训练水平**：器械训练新手
+- **设备**：商业健身房全器械
+- **现实频率**：每周稳定 `1-2` 次；早晨可支配 `40-60` 分钟
+- **伤病史**：膝盖目前无痛；训练中以无痛和动作可控为边界
+""",
+            encoding="utf-8",
+        )
+        (self.data_dir / "CURRENT-PLAN.md").write_text(
+            """# 本周计划 CURRENT-PLAN
+
+## 本阶段安排
+
+每周完成 1-2 次，每次 40-60 分钟。
+
+| 顺序 | 类型 | 内容 |
+|:---|:---|:---|
+| 下一次 | 全身 A | 每项 2 组，8-12 次，RPE 6-7 |
+
+## 本阶段重点
+
+- 出现疼痛就停止对应动作并记录。
+""",
+            encoding="utf-8",
+        )
+        result = self.run_tool(VALIDATE_ONBOARDING)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_onboarding_validator_rejects_each_incomplete_artifact(self):
         cases = (
@@ -219,10 +264,6 @@ class ProfileToolTests(unittest.TestCase):
             "profile_empty_values",
             "plan_placeholders",
             "plan_empty_sections",
-            "workout_missing",
-            "workout_not_initialized",
-            "workout_malformed",
-            "workout_unassigned",
         )
         for case in cases:
             with self.subTest(case=case):
@@ -268,33 +309,6 @@ class ProfileToolTests(unittest.TestCase):
                         encoding="utf-8",
                     )
                     expected = "CURRENT-PLAN.md"
-                elif case == "workout_missing":
-                    (self.visualizer_dir / "current-workout.js").unlink()
-                    expected = "current-workout.js"
-                elif case == "workout_not_initialized":
-                    workout = self.visualizer_dir / "current-workout.js"
-                    workout.write_text(
-                        workout.read_text(encoding="utf-8").replace(
-                            '"initialized": true', '"initialized": false'
-                        ),
-                        encoding="utf-8",
-                    )
-                    expected = "initialized: true"
-                elif case == "workout_malformed":
-                    (self.visualizer_dir / "current-workout.js").write_text(
-                        "window.CURRENT_WORKOUT = Object.freeze({initialized: true, exercises: [{name:}]});",
-                        encoding="utf-8",
-                    )
-                    expected = "JSON"
-                elif case == "workout_unassigned":
-                    workout = self.visualizer_dir / "current-workout.js"
-                    workout.write_text(
-                        workout.read_text(encoding="utf-8").replace(
-                            "window.CURRENT_WORKOUT = ", ""
-                        ),
-                        encoding="utf-8",
-                    )
-                    expected = "window.CURRENT_WORKOUT"
                 result = self.run_tool(VALIDATE_ONBOARDING)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(expected, result.stdout)

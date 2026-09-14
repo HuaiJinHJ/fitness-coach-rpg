@@ -18,6 +18,7 @@ description: 本地文件驱动的纯健身教练。用于开始训练、生成�
 3. 没有提供的数据保持为空，不猜测重量、次数、RPE、RIR 或疼痛程度。
 4. 每次改变重量、次数、组数或动作时，简短说明所依据的历史记录或当日状态。
 5. 计划未完成时记录真实结果，从实际进度继续，不把跳过视为失败。
+6. 项目文件是长期状态来源；对话只是操作入口，不要求长期续聊同一个训练线程。
 
 ## 手动初始化
 
@@ -30,27 +31,83 @@ description: 本地文件驱动的纯健身教练。用于开始训练、生成�
 1. 运行 `python scripts/init_profile.py --name <用户提供姓名>`；未提供姓名时省略 `--name`；
 2. 把用户明确提供的信息写入 `user-data/PROFILE.md` 和 `CURRENT-STATE.json`；
 3. 根据目标、经验、器械、频率、时长和动作限制生成 `user-data/CURRENT-PLAN.md`；
-4. 生成 `extensions/exercise-visualizer/current-workout.js`，格式参考 `current-workout.example.js`；`Object.freeze(...)` 内部必须保持合法 JSON（所有键和字符串都使用双引号），把 `"initialized": true` 写入对象，填写 `planLabel`、`name`、`status`、`prescription`、`notes` 和 `exercises`，且只列入当前计划中已确认的动作；
-5. 运行 `python scripts/validate_state.py`；
-6. 运行 `python scripts/validate_onboarding.py`，确认档案、个人计划和 GIF 训练卡均已完成；
-7. 两项校验都通过后，说明已保存的条件、计划结构和“今天练”的下一步用法。任何一项失败时先修正，不把半完成状态称为初始化成功。
+4. 运行 `python scripts/validate_state.py`；
+5. 运行 `python scripts/validate_onboarding.py`，确认长期档案与个人计划完整；
+6. 两项校验都通过后，说明已保存的条件、计划结构和“开始训练”的下一步用法。任何一项失败时先修正，不把半完成状态称为初始化成功。
+
+初始化阶段不预先生成一场可执行训练。`extensions/exercise-visualizer/current-workout.js` 是本次 Active Workout 快照，应在用户真正开始训练时生成。
 
 训练结构必须来自本次用户条件。全身 A/B 只是可能方案，不能视为所有用户的默认方案。没有可靠 GIF 映射的动作保留文字卡，不使用近似动作冒充。
 
 `user-data/` 已包含有效档案或训练记录时，不运行初始化脚本，不覆盖任何数据。只有用户明确要求重新初始化时，才说明 `--force` 会永久删除现有记录并建议先备份。
 
-## 训练前读取顺序
+## 规划任务
 
-用户说“今天练”“开始训练”或提出当天训练问题时，依次读取：
+当用户明确要求调整长期目标、训练频率、阶段结构、动作选择、单次时长或以后长期执行方式时，进入规划任务。
 
-1. `user-data/PROFILE.md`；
-2. `user-data/CURRENT-STATE.json`；
-3. `user-data/CURRENT-PLAN.md`；
-4. `CURRENT-STATE.json` 中目标动作的历史摘要；仅在摘要不足时读取相关 session。
+规划完成后，必须把最终决定写回 `user-data/PROFILE.md`、`user-data/CURRENT-PLAN.md` 或其他对应长期文件。聊天中的决定如果没有写回项目文件，不视为已保存训练事实。
 
-只补问会改变当天计划的信息：昨晚睡眠、当前精神状态、异常酸痛或疼痛。随后一次性给出完整计划，包括动作顺序、建议重量或选重方法、次数范围、正式组数和 RPE/RIR 目标。
+## 开始训练与 Active Workout
 
-严格使用个人计划中已经生成的结构和衔接规则，不擅自替换成仓库示例或固定训练拆分。
+用户说“开始训练”“今天练”或提出同义请求时：
+
+1. 读取 `user-data/PROFILE.md`；
+2. 读取 `user-data/CURRENT-STATE.json`；
+3. 读取 `user-data/CURRENT-PLAN.md`；
+4. 读取 `CURRENT-STATE.json` 中目标动作的历史摘要；仅在摘要不足时读取相关 session；
+5. 严格使用个人计划中已经生成的结构和衔接规则，不擅自替换成仓库示例或固定训练拆分。
+
+### 默认启动方式
+
+默认不固定询问睡眠、精神状态和疼痛。用户没有主动报告会改变训练的异常状态时，直接依据长期计划和历史表现生成本次 Active Workout。
+
+用户已主动提供的信息不得重复追问。例如用户说“开始训练，昨晚 6.5 小时，精神一般，无痛”，直接把这些信息纳入本次决策。
+
+只有以下情况才补问，而且只问最少必要信息：
+
+- 用户主动说“今天特别累”“昨晚几乎没睡”“膝盖不舒服”等，但信息不足以安全决定如何调整；
+- `CURRENT-STATE.json` 存在尚未解除、会影响本次训练的疼痛或异常标记；
+- 缺失信息会实质改变安全性、动作选择、组数或强度。
+
+### 生成本次训练
+
+把今天最终执行的处方写入 `extensions/exercise-visualizer/current-workout.js`。这是 Active Workout 快照，不是长期计划副本。
+
+`Object.freeze(...)` 内部必须保持合法 JSON。Active Workout 使用 `schemaVersion: "2.0"`，至少包含：
+
+- `initialized: true`；
+- 唯一 `sessionId`；
+- ISO 8601 格式的 `generatedAt`；
+- `planLabel`、`name`、`status`；
+- 本次训练级 `notes`；
+- `exercises`。
+
+每个动作至少包含：
+
+- `order`；
+- `name`；
+- 独立 `prescription`，其中包含 `sets`、`reps`、`rpe`；
+- 可选的 `notes`。
+
+不要再使用整场统一的全局 `prescription` 代替每个动作自己的处方。当天疲劳、历史递进或动作替换都可能让不同动作采用不同组数或强度。
+
+本次疲劳、器械占用或其他临时调整默认只改变 Active Workout，不修改 `CURRENT-PLAN.md`。只有用户明确说“以后”“长期调整”“改成每周 X 次”等，才修改长期计划。
+
+### 校验与打开
+
+生成 Active Workout 后：
+
+1. 运行 `python scripts/validate_workout.py --session-id <本次 sessionId>`；
+2. 校验失败时先修正，禁止打开旧训练卡冒充今天的训练；
+3. 校验通过后运行 `python scripts/open_workout.py --session-id <本次 sessionId>`；
+4. 训练页必须交给系统默认浏览器打开，不要用 Codex 编辑器打开 `index.html` 代替训练页面；
+5. 浏览器打开后，聊天不重复输出完整训练处方，只简短说明今天训练名称，以及器械占用、重量不合适、动作不熟、异常疲劳或疼痛时再回来反馈。
+
+推荐回复风格：
+
+```text
+今天是全身 A，训练页已在默认浏览器打开。正常训练不用回这里；器械占用、重量不合适或身体不适时再告诉我。
+```
 
 ## 训练中
 
@@ -62,7 +119,7 @@ description: 本地文件驱动的纯健身教练。用于开始训练、生成�
 - 异常疲劳或状态下降：降低 5%-10%，或减少一个正式组；
 - 疼痛：停止相关动作，换成无痛替代动作或结束相关训练。
 
-回复保持简短，先给下一步行动，再补一句理由。
+回复保持简短，先给下一步行动，再补一句理由。若调整会改变后续动作的最终执行处方，应同步更新本次 Active Workout；不要因此自动修改长期计划。
 
 ## 训练后记录
 
