@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -48,11 +49,12 @@ class ActiveWorkoutTests(unittest.TestCase):
         )
 
     def valid_payload(self):
+        generated_at = datetime.now().astimezone()
         return {
             "schemaVersion": "2.0",
             "initialized": True,
-            "sessionId": "20260914-113000-full-body-a",
-            "generatedAt": "2026-09-14T11:30:00+08:00",
+            "sessionId": generated_at.strftime("%Y%m%d-%H%M%S-full-body-a"),
+            "generatedAt": generated_at.isoformat(),
             "planLabel": "今天",
             "name": "全身 A",
             "status": "正常执行",
@@ -91,6 +93,14 @@ class ActiveWorkoutTests(unittest.TestCase):
                 result = self.run_validator()
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(key, result.stdout)
+
+    def test_rejects_workout_generated_on_an_old_date(self):
+        payload = self.valid_payload()
+        payload["generatedAt"] = "2000-01-01T08:00:00+08:00"
+        self.write_workout(payload)
+        result = self.run_validator()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("generatedAt 必须是今天", result.stdout)
 
 
 if __name__ == "__main__":

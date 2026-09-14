@@ -45,9 +45,16 @@ def validate_workout(workout):
     generated_at = workout.get("generatedAt")
     if isinstance(generated_at, str) and generated_at.strip():
         try:
-            datetime.fromisoformat(generated_at)
+            generated_datetime = datetime.fromisoformat(generated_at)
         except ValueError:
             errors.append("generatedAt 必须是 ISO 8601 时间")
+        else:
+            if generated_datetime.tzinfo is not None:
+                generated_date = generated_datetime.astimezone().date()
+            else:
+                generated_date = generated_datetime.date()
+            if generated_date != datetime.now().astimezone().date():
+                errors.append("generatedAt 必须是今天")
 
     notes = workout.get("notes")
     if not isinstance(notes, list):
